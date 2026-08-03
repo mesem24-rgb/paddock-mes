@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   },
   description:
     "Business operations and project management platform for custom software development.",
+icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
+
+
 
 export default function RootLayout({
   children,
