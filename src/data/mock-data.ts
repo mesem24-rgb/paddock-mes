@@ -1,0 +1,380 @@
+import type { Activity, DashboardMetric, Project, Task } from "@/types";
+
+export const dashboardMetrics: DashboardMetric[] = [
+  {
+    id: "active-projects",
+    label: "Active Projects",
+    value: "4",
+    change: "1 added this month",
+    trend: "up",
+  },
+  {
+    id: "open-tasks",
+    label: "Open Tasks",
+    value: "18",
+    change: "5 due this week",
+    trend: "neutral",
+  },
+  {
+    id: "monthly-revenue",
+    label: "Monthly Revenue",
+    value: "$8,450",
+    change: "12% from last month",
+    trend: "up",
+  },
+  {
+    id: "outstanding",
+    label: "Outstanding",
+    value: "$3,200",
+    change: "2 unpaid invoices",
+    trend: "down",
+  },
+];
+
+export const projects: Project[] = [
+  {
+    id: "paddock-platform",
+    name: "Paddock Platform",
+    clientName: "Internal",
+    clientEmail: "mesem24@gmail.com",
+    description:
+      "Business operations platform for managing clients, projects, tasks, time, documents, invoices, and software delivery.",
+    status: "In Progress",
+    priority: "High",
+    progress: 22,
+    budget: 12000,
+    amountPaid: 0,
+    estimatedHours: 240,
+    hoursWorked: 38,
+    startDate: "2026-07-17",
+    dueDate: "2026-09-15",
+    technology: ["Next.js", "TypeScript", "Tailwind CSS", "Supabase", "Vercel"],
+    repositoryUrl: "https://github.com/mesem24-rgb/paddock",
+    stagingUrl: "https://paddock-staging.vercel.app",
+    milestones: [
+      {
+        id: "paddock-milestone-1",
+        title: "Foundation",
+        description:
+          "Create the application shell, dashboard, navigation, and core project structure.",
+        status: "Completed",
+        dueDate: "2026-07-20",
+        completedDate: "2026-07-18",
+      },
+      {
+        id: "paddock-milestone-2",
+        title: "Projects and clients",
+        description:
+          "Build project management, client profiles, tasks, and activity tracking.",
+        status: "In Progress",
+        dueDate: "2026-08-05",
+      },
+      {
+        id: "paddock-milestone-3",
+        title: "Operations",
+        description:
+          "Add time tracking, invoices, documents, and financial reporting.",
+        status: "Upcoming",
+        dueDate: "2026-08-25",
+      },
+      {
+        id: "paddock-milestone-4",
+        title: "Production launch",
+        description:
+          "Connect Supabase, add authentication, test workflows, and deploy.",
+        status: "Upcoming",
+        dueDate: "2026-09-15",
+      },
+    ],
+    tasks: [
+      {
+        id: "paddock-task-1",
+        title: "Build project list page",
+        status: "In Progress",
+        priority: "High",
+        dueDate: "2026-07-19",
+        assignee: "Michael Sullivan",
+      },
+      {
+        id: "paddock-task-2",
+        title: "Build project detail page",
+        status: "To Do",
+        priority: "High",
+        dueDate: "2026-07-20",
+        assignee: "Michael Sullivan",
+      },
+      {
+        id: "paddock-task-3",
+        title: "Create new project form",
+        status: "To Do",
+        priority: "Medium",
+        dueDate: "2026-07-22",
+        assignee: "Michael Sullivan",
+      },
+    ],
+    documents: [
+      {
+        id: "paddock-document-1",
+        name: "Paddock MVP Scope",
+        type: "PDF",
+        size: "184 KB",
+        updatedAt: "2026-07-17",
+      },
+      {
+        id: "paddock-document-2",
+        name: "Database Planning",
+        type: "Document",
+        size: "42 KB",
+        updatedAt: "2026-07-18",
+      },
+    ],
+  },
+  {
+    id: "compass-crm",
+    name: "Compass Recruiting CRM",
+    clientName: "Compass Group Recruiting",
+    clientEmail: "hans@compassgrouprecruiting.com",
+    description:
+      "Custom recruiting CRM for candidate, client, job order, assignment, and pipeline management.",
+    status: "In Progress",
+    priority: "High",
+    progress: 68,
+    budget: 15000,
+    amountPaid: 5000,
+    estimatedHours: 420,
+    hoursWorked: 176,
+    startDate: "2026-06-01",
+    dueDate: "2026-08-30",
+    technology: ["Next.js", "TypeScript", "Supabase", "PostgreSQL", "Vercel"],
+    repositoryUrl: "https://github.com/mesem24-rgb/compass-recruiting-crm",
+    productionUrl: "https://compass-recruiting-crm.vercel.app",
+    milestones: [
+      {
+        id: "compass-milestone-1",
+        title: "CRM foundation",
+        description:
+          "Application architecture, dashboard, navigation, and responsive shell.",
+        status: "Completed",
+        dueDate: "2026-06-15",
+        completedDate: "2026-06-13",
+      },
+      {
+        id: "compass-milestone-2",
+        title: "Candidate management",
+        description:
+          "Candidate search, profiles, notes, status, and recruiting workflow.",
+        status: "Completed",
+        dueDate: "2026-07-05",
+        completedDate: "2026-07-04",
+      },
+      {
+        id: "compass-milestone-3",
+        title: "Client and job orders",
+        description:
+          "Client profiles, job orders, recruiter assignments, and ownership.",
+        status: "In Progress",
+        dueDate: "2026-07-30",
+      },
+      {
+        id: "compass-milestone-4",
+        title: "Production release",
+        description:
+          "Reports, testing, permissions, deployment, and client handoff.",
+        status: "Upcoming",
+        dueDate: "2026-08-30",
+      },
+    ],
+    tasks: [
+      {
+        id: "compass-task-1",
+        title: "Complete client profile workflow",
+        status: "In Progress",
+        priority: "High",
+        dueDate: "2026-07-21",
+        assignee: "Michael Sullivan",
+      },
+      {
+        id: "compass-task-2",
+        title: "Build recruiter assignment rules",
+        status: "To Do",
+        priority: "High",
+        dueDate: "2026-07-25",
+        assignee: "Michael Sullivan",
+      },
+      {
+        id: "compass-task-3",
+        title: "Review mobile candidate layout",
+        status: "To Do",
+        priority: "Medium",
+        dueDate: "2026-07-27",
+        assignee: "Michael Sullivan",
+      },
+    ],
+    documents: [
+      {
+        id: "compass-document-1",
+        name: "Compass CRM Proposal",
+        type: "PDF",
+        size: "326 KB",
+        updatedAt: "2026-06-02",
+      },
+      {
+        id: "compass-document-2",
+        name: "Client Requirements",
+        type: "Document",
+        size: "71 KB",
+        updatedAt: "2026-07-12",
+      },
+    ],
+  },
+  {
+    id: "company-website",
+    name: "Company Website",
+    clientName: "Internal",
+    clientEmail: "mesem24@gmail.com",
+    description:
+      "Marketing website for the custom software development business, including services, projects, process, and lead generation.",
+    status: "Planning",
+    priority: "Medium",
+    progress: 15,
+    budget: 4500,
+    amountPaid: 0,
+    estimatedHours: 100,
+    hoursWorked: 12,
+    startDate: "2026-07-20",
+    dueDate: "2026-08-20",
+    technology: ["Next.js", "TypeScript", "Tailwind CSS", "Vercel"],
+    milestones: [
+      {
+        id: "website-milestone-1",
+        title: "Brand direction",
+        description:
+          "Finalize the company name, positioning, logo, and visual direction.",
+        status: "In Progress",
+        dueDate: "2026-07-24",
+      },
+      {
+        id: "website-milestone-2",
+        title: "Website build",
+        description:
+          "Build the primary marketing pages and responsive components.",
+        status: "Upcoming",
+        dueDate: "2026-08-10",
+      },
+      {
+        id: "website-milestone-3",
+        title: "Launch",
+        description:
+          "Connect the domain, analytics, lead forms, and production deployment.",
+        status: "Upcoming",
+        dueDate: "2026-08-20",
+      },
+    ],
+    tasks: [
+      {
+        id: "website-task-1",
+        title: "Finalize company name",
+        status: "In Progress",
+        priority: "High",
+        dueDate: "2026-07-22",
+        assignee: "Michael Sullivan",
+      },
+      {
+        id: "website-task-2",
+        title: "Write services content",
+        status: "To Do",
+        priority: "Medium",
+        dueDate: "2026-07-26",
+        assignee: "Michael Sullivan",
+      },
+    ],
+    documents: [],
+  },
+  {
+    id: "gulf-coast-client-portal",
+    name: "Client Portal Concept",
+    clientName: "Gulf Coast Services",
+    clientEmail: "contact@gulfcoastservices.com",
+    description:
+      "Early concept for a customer portal that manages service requests, documents, payments, and account communication.",
+    status: "On Hold",
+    priority: "Low",
+    progress: 8,
+    budget: 8500,
+    amountPaid: 0,
+    estimatedHours: 160,
+    hoursWorked: 9,
+    startDate: "2026-06-25",
+    dueDate: "2026-10-15",
+    technology: ["Next.js", "Supabase", "Stripe"],
+    milestones: [],
+    tasks: [],
+    documents: [],
+  },
+];
+
+export const upcomingTasks: Task[] = [
+  {
+    id: "task-1",
+    title: "Create Paddock application shell",
+    projectName: "Paddock Platform",
+    status: "In Progress",
+    priority: "High",
+    dueDate: "2026-07-18",
+  },
+  {
+    id: "task-2",
+    title: "Finish candidate profile workflow",
+    projectName: "Compass Recruiting CRM",
+    status: "To Do",
+    priority: "High",
+    dueDate: "2026-07-20",
+  },
+  {
+    id: "task-3",
+    title: "Write company service descriptions",
+    projectName: "Company Website",
+    status: "To Do",
+    priority: "Medium",
+    dueDate: "2026-07-22",
+  },
+  {
+    id: "task-4",
+    title: "Review dashboard mobile layout",
+    projectName: "Paddock Platform",
+    status: "To Do",
+    priority: "Medium",
+    dueDate: "2026-07-23",
+  },
+];
+
+export const recentActivity: Activity[] = [
+  {
+    id: "activity-1",
+    title: "Project created",
+    description: "Paddock Platform was added to active projects.",
+    timestamp: "15 minutes ago",
+    type: "project",
+  },
+  {
+    id: "activity-2",
+    title: "Task completed",
+    description: "Compass CRM deployment errors were resolved.",
+    timestamp: "2 hours ago",
+    type: "task",
+  },
+  {
+    id: "activity-3",
+    title: "Client updated",
+    description: "Compass Group Recruiting contact notes were updated.",
+    timestamp: "Yesterday",
+    type: "client",
+  },
+  {
+    id: "activity-4",
+    title: "Invoice created",
+    description: "An invoice for $2,500 was prepared for review.",
+    timestamp: "2 days ago",
+    type: "invoice",
+  },
+];
