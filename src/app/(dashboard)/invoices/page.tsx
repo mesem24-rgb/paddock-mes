@@ -11,6 +11,7 @@ export default function InvoicesPage() {
   const { projects, isLoaded: projectsLoaded } = useProjects();
   const { invoices, isLoaded, addInvoice, updateInvoice } = useInvoices();
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<Invoice | null>(null);
   const [filter, setFilter] = useState("All");
   if (!isLoaded || !projectsLoaded) return <p>Loading invoices…</p>;
   const today = localDate();
@@ -58,6 +59,8 @@ export default function InvoicesPage() {
         ))}
       </div>
       <form
+        id="invoice-form"
+        key={editing?.id ?? "new"}
         className="grid gap-4 rounded-2xl border bg-white p-5 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -69,6 +72,7 @@ export default function InvoicesPage() {
           const projectId = String(d.get("project"));
           if (
             !projects.some((p) => p.id === projectId) ||
+            !String(d.get("description")).trim() ||
             !Number.isFinite(amount) ||
             amount <= 0 ||
             dueDate < sendDate
@@ -78,23 +82,29 @@ export default function InvoicesPage() {
             );
             return;
           }
-          addInvoice({
+          const details = {
             projectId,
             description: String(d.get("description")).trim(),
             amount,
             sendDate,
             dueDate,
             trigger: String(d.get("trigger")).trim(),
-            status: "Planned",
-          });
+          };
+          if (editing) updateInvoice(editing.id, details);
+          else addInvoice({ ...details, status: "Planned" });
+          setEditing(null);
           form.reset();
           setError("");
         }}
       >
+        <h2 className="text-xl font-semibold sm:col-span-2">
+          {editing ? "Edit invoice" : "Schedule invoice"}
+        </h2>
         <label>
           Project
           <select
             name="project"
+            defaultValue={editing?.projectId ?? ""}
             required
             className="mt-1 block w-full rounded-lg border p-3"
           >
@@ -110,6 +120,7 @@ export default function InvoicesPage() {
           Description
           <input
             name="description"
+            defaultValue={editing?.description ?? ""}
             placeholder="Design approval payment"
             required
             className="mt-1 block w-full rounded-lg border p-3"
@@ -119,6 +130,7 @@ export default function InvoicesPage() {
           Amount ($)
           <input
             name="amount"
+            defaultValue={editing?.amount ?? ""}
             type="number"
             min="0.01"
             step="0.01"
@@ -130,6 +142,7 @@ export default function InvoicesPage() {
           Milestone / condition (optional)
           <input
             name="trigger"
+            defaultValue={editing?.trigger ?? ""}
             placeholder="Confirm client approval before sending"
             className="mt-1 block w-full rounded-lg border p-3"
           />
@@ -139,7 +152,7 @@ export default function InvoicesPage() {
           <input
             name="sendDate"
             type="date"
-            defaultValue={today}
+            defaultValue={editing?.sendDate ?? today}
             required
             className="mt-1 block w-full rounded-lg border p-3"
           />
@@ -148,6 +161,7 @@ export default function InvoicesPage() {
           Payment due
           <input
             name="dueDate"
+            defaultValue={editing?.dueDate ?? ""}
             type="date"
             required
             className="mt-1 block w-full rounded-lg border p-3"
@@ -159,8 +173,20 @@ export default function InvoicesPage() {
           </p>
         )}
         <button className="rounded-lg bg-[#171918] p-3 text-white sm:col-span-2">
-          Schedule invoice
+          {editing ? "Save invoice changes" : "Schedule invoice"}
         </button>
+        {editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setError("");
+            }}
+            className="rounded-lg border p-3 sm:col-span-2"
+          >
+            Cancel editing
+          </button>
+        )}
       </form>
       <label className="my-5 block">
         Show{" "}
@@ -202,6 +228,18 @@ export default function InvoicesPage() {
                 <p className="text-sm text-red-700">Overdue — follow up</p>
               )}
             </div>
+            <button
+              className="rounded-lg border px-3 py-2"
+              onClick={() => {
+                setEditing(i);
+                setError("");
+                document
+                  .getElementById("invoice-form")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Edit
+            </button>
             <select
               aria-label={`Status for ${i.description}`}
               value={i.status}
