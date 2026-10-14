@@ -9,7 +9,8 @@ const money = (n: number) =>
   );
 export default function InvoicesPage() {
   const { projects, isLoaded: projectsLoaded } = useProjects();
-  const { invoices, isLoaded, addInvoice, updateInvoice } = useInvoices();
+  const { invoices, isLoaded, addInvoice, updateInvoice, scheduleNextInvoice } =
+    useInvoices();
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [filter, setFilter] = useState("All");
@@ -82,7 +83,17 @@ export default function InvoicesPage() {
             );
             return;
           }
+          const recurrence =
+            d.get("recurrence") === "Monthly"
+              ? ("Monthly" as const)
+              : undefined;
           const details = {
+            recurrence,
+            billingDay: recurrence
+              ? editing?.sendDate === sendDate
+                ? (editing.billingDay ?? Number(sendDate.slice(8, 10)))
+                : Number(sendDate.slice(8, 10))
+              : undefined,
             projectId,
             description: String(d.get("description")).trim(),
             amount,
@@ -167,6 +178,21 @@ export default function InvoicesPage() {
             className="mt-1 block w-full rounded-lg border p-3"
           />
         </label>
+        <label className="sm:col-span-2">
+          Repeat
+          <select
+            name="recurrence"
+            defaultValue={editing?.recurrence ?? "One-off"}
+            className="mt-1 block w-full rounded-lg border p-3"
+          >
+            <option value="One-off">One-off invoice</option>
+            <option value="Monthly">Monthly retainer / maintenance</option>
+          </select>
+          <span className="mt-2 block text-xs text-[#71756e]">
+            Use Create next month on a saved monthly invoice to plan the next
+            billing date. Invoices are not sent automatically.
+          </span>
+        </label>
         {error && (
           <p role="alert" className="text-red-700">
             {error}
@@ -215,6 +241,14 @@ export default function InvoicesPage() {
                   "Project unavailable"}{" "}
                 · Send {i.sendDate} · Due {i.dueDate}
               </p>
+              {i.recurrence && (
+                <p className="mt-1 text-sm font-medium">Monthly billing</p>
+              )}
+              {i.nextInvoiceId && (
+                <p className="mt-1 text-xs text-[#71756e]">
+                  Next month already scheduled.
+                </p>
+              )}
               {i.trigger && (
                 <p className="mt-1 text-sm">Condition: {i.trigger}</p>
               )}
@@ -228,6 +262,14 @@ export default function InvoicesPage() {
                 <p className="text-sm text-red-700">Overdue — follow up</p>
               )}
             </div>
+            {i.recurrence === "Monthly" && !i.nextInvoiceId && (
+              <button
+                onClick={() => scheduleNextInvoice(i.id)}
+                className="rounded-lg border px-3 py-2"
+              >
+                Create next month
+              </button>
+            )}
             <button
               className="rounded-lg border px-3 py-2"
               onClick={() => {

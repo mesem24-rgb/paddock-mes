@@ -222,6 +222,25 @@ async function mount(Provider, hook) {
   assert.equal(invoices.value.invoices[0].sendDate, "2026-10-16");
   assert.equal(invoices.value.invoices[0].trigger, "Design approved");
   assert.equal(invoices.value.invoices[0].id, id);
+  await act(async () =>
+    invoices.value.updateInvoice(id, { recurrence: "Monthly", billingDay: 16 }),
+  );
+  await act(async () => {
+    invoices.value.scheduleNextInvoice(id);
+    invoices.value.scheduleNextInvoice(id);
+  });
+  assert.equal(invoices.value.invoices.length, 2);
+  const nextId = invoices.value.invoices[0].nextInvoiceId;
+  await invoices.close();
+  invoices = await mount(InvoiceProvider, useInvoices);
+  assert.equal(
+    invoices.value.invoices.find((i) => i.id === nextId).sendDate,
+    "2026-11-16",
+  );
+  assert.equal(
+    invoices.value.invoices.find((i) => i.id === nextId).status,
+    "Planned",
+  );
   await invoices.close();
   assert.equal(
     localDate(new Date(2026, 9, 14, 23, 59)),

@@ -1,7 +1,12 @@
 "use client";
 import { createContext, useContext, type ReactNode } from "react";
+import { scheduleNextMonthlyInvoice } from "@/lib/recurringInvoices";
 import { useStoredCollection } from "@/lib/useStoredCollection";
 export interface Invoice {
+  recurrence?: "Monthly";
+  billingDay?: number;
+  sourceInvoiceId?: string;
+  nextInvoiceId?: string;
   id: string;
   projectId: string;
   description: string;
@@ -19,6 +24,7 @@ const Context = createContext<{
   pending: number;
   exportRecords: () => void;
   importLocal: () => void;
+  scheduleNextInvoice: (id: string) => void;
   addInvoice: (invoice: Omit<Invoice, "id">) => void;
   updateInvoice: (
     id: string,
@@ -44,6 +50,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         pending,
         exportRecords,
         importLocal,
+        scheduleNextInvoice: (id) =>
+          setRecords((current) => scheduleNextMonthlyInvoice(current, id)),
         addInvoice: (invoice) =>
           setRecords((current) => [
             ...current,

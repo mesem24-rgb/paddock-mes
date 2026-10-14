@@ -80,6 +80,7 @@ export function useStoredCollection<T>(name: string, initial: T[]) {
         typeof action === "function"
           ? (action as (previous: T[]) => T[])(current.current)
           : action;
+      if (next === current.current) return;
       current.current = next;
       setRecords(next);
       setPending((n) => n + 1);
