@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import DocumentLibrary from "@/components/projects/DocumentLibrary";
 import { useClients } from "@/context/ClientContext";
 import { useProjects } from "@/context/ProjectContext";
 import { useInvoices } from "@/context/InvoiceContext";
@@ -141,7 +142,9 @@ export default function DocumentsPage() {
   }
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-3xl font-semibold">Document import</h1>
+      <h1 className="text-3xl font-semibold">Documents</h1>
+      <DocumentLibrary projects={projects} />
+      <h2 id="document-import" className="scroll-mt-6 text-2xl font-semibold">Import a document</h2>
       <p className="mt-2 text-[#71756e]">
         Upload a proposal, contract, or invoice, or paste its text. Review
         suggestions before applying them.
@@ -261,6 +264,7 @@ export default function DocumentsPage() {
               <label>
                 Project destination
                 <select
+                  aria-label="Project destination"
                   value={projectId}
                   onChange={(e) => {
                     setProjectId(e.target.value);

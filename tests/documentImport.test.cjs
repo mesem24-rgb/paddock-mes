@@ -274,7 +274,7 @@ function pdf() {
   assert.equal(updates.length, 0, "analysis must never mutate records");
   await act(async () =>
     renderer.root
-      .findAllByType("select")[0]
+      .findByProps({ "aria-label": "Project destination" })
       .props.onChange({ target: { value: "project" } }),
   );
   await act(async () =>
@@ -302,7 +302,7 @@ function pdf() {
   // A second import applies only the budget, with invoice suggestions unchecked.
   await act(async () => renderer.root.findByType("textarea").props.onChange({ target: { value: reviewSource + "\nDeposit: $1,900" } }));
   await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Review extracted fields").props.onClick());
-  await act(async () => renderer.root.findAllByType("select")[0].props.onChange({ target: { value: "project" } }));
+  await act(async () => renderer.root.findByProps({ "aria-label": "Project destination" }).props.onChange({ target: { value: "project" } }));
   const toggle = label => renderer.root.findAllByType("input").find(i => i.props["aria-label"] === label);
   await act(async () => toggle("Update Project budget ($)").props.onChange({ target: { checked: true } }));
   // Locate by its label's rendered text, rather than relying on field order.
@@ -317,7 +317,7 @@ function pdf() {
   global.fetch = async () => Response.json({ text: reviewSource });
   await act(async () => renderer.root.findAllByType("input").find(i => i.props.type === "file").props.onChange({ target: { files: [new File(["contract"], "original.pdf")] } }));
   await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Review extracted fields").props.onClick());
-  await act(async () => renderer.root.findAllByType("select")[0].props.onChange({ target: { value: "project" } }));
+  await act(async () => renderer.root.findByProps({ "aria-label": "Project destination" }).props.onChange({ target: { value: "project" } }));
   const beforeFailure = updates.length;
   await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
   assert.equal(updates.length, beforeFailure, "failed file upload must not apply project changes");
