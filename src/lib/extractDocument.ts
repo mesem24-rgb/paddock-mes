@@ -15,7 +15,7 @@ export async function extractDocument(name: string, data: Uint8Array) {
       const info = await parser.getInfo();
       if (info.total > 30)
         throw new Error("Use a document with 30 pages or fewer.");
-      return (await parser.getText()).text;
+      return (await parser.getText()).text.replace(/^\s*-- \d+ of \d+ --\s*$/gm, "");
     } finally {
       await parser.destroy();
     }

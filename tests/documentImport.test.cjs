@@ -37,6 +37,22 @@ const docx = Buffer.from(
 const { extractDocument } = require("../src/lib/extractDocument.ts");
 const { extractSuggestions } = require("../src/lib/documentImport.ts");
 const { POST } = require("../src/app/api/documents/extract/route.ts");
+const tableContract = extractSuggestions("PREPARED FOR Example Manufacturing\nPROJECT INVESTMENT$15,000\n\nProject\n\nWebsite Modernization\n40% AT SIGNING\n30% AT MILESTONE\n30% BEFORE COMPLETION\n$6,000\n$4,500\n$4,500");
+assert.equal(tableContract.clientName, "Example Manufacturing");
+assert.equal(tableContract.projectName, "Website Modernization");
+assert.equal(tableContract.budget, "15000");
+assert.deepEqual(tableContract.billing.map(b => b.amount), ["6000", "4500", "4500"]);
+assert.ok(tableContract.billing.every(b => !b.sendDate && !b.dueDate));
+const fullContract = extractSuggestions("Client Example Person, doing business as Example Agency\nProject Agency Website\nExample Agency | Project Fee $3,800\nPayment in full Upon signing and before work begins $3,800\nFuture integration may cost $1,500 to $2,500");
+assert.equal(fullContract.clientName, "Example Agency");
+assert.equal(fullContract.contactName, "Example Person");
+assert.equal(fullContract.budget, "3800");
+assert.equal(fullContract.billing[0].amount, "3800");
+const tableInvoice = extractSuggestions("Invoice Date October 2, 2026\nProject Agency Website\nFROM\nExample Developer\nprovider@example.com\nBILL TO\nExample Person\nExample Agency\nclient@example.com\nBalance Due $3,800");
+assert.equal(tableInvoice.email, "client@example.com");
+assert.equal(tableInvoice.clientName, "Example Agency");
+assert.equal(tableInvoice.billing[0].sendDate, "2026-10-02");
+assert.equal(tableInvoice.billing[0].amount, "3800");
 const source =
   "Client: Example Company\nClient contact: Example Owner\nClient email: owner@example.com\nProject: Test website\nTotal: $3,800\nStart date: 2026-10-20\nCompletion date: November 20, 2026\nDeposit: $1,900";
 const suggestions = extractSuggestions(source);
