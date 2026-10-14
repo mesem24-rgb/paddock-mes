@@ -7,7 +7,7 @@ import { useClients } from "@/context/ClientContext";
 import { needsAttention } from "@/lib/attention";
 import { useInvoices } from "@/context/InvoiceContext";
 import { useProjects } from "@/context/ProjectContext";
-import { localDate, projectTasks } from "@/lib/planning";
+import { localDate, projectTasks, shiftDate } from "@/lib/planning";
 import UpcomingTasks from "@/components/dashboard/UpcomingTasks";
 export default function DashboardPage() {
   const { projects: allProjects, isLoaded } = useProjects();
@@ -142,6 +142,17 @@ export default function DashboardPage() {
               .length
           }{" "}
           overdue payments
+        </p>
+        <p className="mt-2 text-sm text-[#71756e]">
+          {
+            invoices.filter(
+              (i) =>
+                i.status === "Planned" &&
+                i.sendDate > today &&
+                i.sendDate <= shiftDate(today, 7),
+            ).length
+          }{" "}
+          invoices scheduled in the next 7 days.
         </p>
         <Link
           href="/invoices"

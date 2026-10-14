@@ -208,3 +208,49 @@ assert.equal(shortPlan.milestones.at(-1).dueDate, "2027-01-01");
 console.log(
   "Passed: blank templates, generated plan sizes, unique IDs, project-window dates and year boundary.",
 );
+
+const {
+  nextMonthlyDate,
+  scheduleNextMonthlyInvoice,
+} = require("../src/lib/recurringInvoices.ts");
+assert.equal(nextMonthlyDate("2026-01-31"), "2026-02-28");
+assert.equal(nextMonthlyDate("2028-01-31"), "2028-02-29");
+assert.equal(nextMonthlyDate("2026-12-15"), "2027-01-15");
+const monthly = {
+  id: "monthly",
+  projectId: "p",
+  description: "Maintenance",
+  amount: 500,
+  sendDate: "2026-01-31",
+  dueDate: "2026-02-14",
+  trigger: "Monthly maintenance",
+  status: "Paid",
+  recurrence: "Monthly",
+};
+let series = scheduleNextMonthlyInvoice([monthly], monthly.id);
+const feb = series[1];
+assert.equal(feb.sendDate, "2026-02-28");
+assert.equal(feb.dueDate, "2026-03-14");
+assert.equal(feb.status, "Planned");
+assert.equal(feb.amount, 500);
+assert.equal(feb.projectId, "p");
+assert.equal(feb.trigger, monthly.trigger);
+assert.equal(series[0].status, "Paid");
+assert.equal(series[0].nextInvoiceId, feb.id);
+assert.equal(feb.sourceInvoiceId, monthly.id);
+assert.equal(
+  scheduleNextMonthlyInvoice(series, monthly.id),
+  series,
+  "repeating the action must not create a duplicate or save unchanged state",
+);
+series = scheduleNextMonthlyInvoice(series, feb.id);
+assert.equal(
+  series[2].sendDate,
+  "2026-03-31",
+  "month-end billing day must not drift after February",
+);
+const oneoff = [{ ...monthly, recurrence: undefined }];
+assert.equal(scheduleNextMonthlyInvoice(oneoff, monthly.id), oneoff);
+console.log(
+  "Passed: monthly billing, leap/year boundaries, payment terms, month-end anchors, source links and duplicate prevention.",
+);
