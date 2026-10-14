@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import ProjectCard from "@/components/dashboard/ProjectCard";
+import { useClients } from "@/context/ClientContext";
+import { needsAttention } from "@/lib/attention";
 import { useInvoices } from "@/context/InvoiceContext";
 import { useProjects } from "@/context/ProjectContext";
 import { localDate, projectTasks } from "@/lib/planning";
@@ -10,8 +12,11 @@ import UpcomingTasks from "@/components/dashboard/UpcomingTasks";
 export default function DashboardPage() {
   const { projects: allProjects, isLoaded } = useProjects();
   const { invoices, isLoaded: invoicesLoaded } = useInvoices();
-  if (!isLoaded || !invoicesLoaded) return <p>Loading your workspace…</p>;
+  const { clients, isLoaded: clientsLoaded } = useClients();
+  if (!isLoaded || !invoicesLoaded || !clientsLoaded)
+    return <p>Loading your workspace…</p>;
   const today = localDate();
+  const attention = needsAttention(allProjects, clients, invoices, today);
   const projects = allProjects.filter((p) => p.status !== "Completed");
   const openTasks = projectTasks(allProjects).filter(
     (t) => t.status !== "Completed",
@@ -76,6 +81,46 @@ export default function DashboardPage() {
         </Link>
       </section>
 
+      <section className="mt-6 rounded-2xl border border-[#dedfd9] bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">
+            Needs attention · {attention.length}
+          </h2>
+          <Link href="/leads" className="text-sm font-medium">
+            Manage client follow-ups →
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {attention.slice(0, 8).map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              className="rounded-xl border p-4 hover:bg-[#f5f5f0]"
+            >
+              <p
+                className={`text-xs font-semibold ${item.date < today ? "text-red-700" : "text-[#71756e]"}`}
+              >
+                {item.kind} · {item.date < today ? "Overdue" : "Today"} ·{" "}
+                {item.date}
+              </p>
+              <h3 className="mt-2 font-medium">{item.title}</h3>
+              <p className="mt-1 text-sm text-[#71756e]">{item.detail}</p>
+            </Link>
+          ))}
+        </div>
+        {attention.length === 0 && (
+          <p className="mt-3 text-sm text-[#71756e]">
+            No overdue work or check-ins due today. Open your planner to choose
+            your next task.
+          </p>
+        )}
+        {attention.length > 8 && (
+          <p className="mt-3 text-sm text-[#71756e]">
+            Showing the oldest 8 reminders. Check Tasks, Leads, and Invoices for
+            the full lists.
+          </p>
+        )}
+      </section>
       {/* SECTION: Dashboard metrics */}
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (

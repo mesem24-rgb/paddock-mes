@@ -101,6 +101,31 @@ async function mount(Provider, hook) {
     client.id,
     "clients survive provider remount",
   );
+  await act(async () =>
+    clients.value.updateClient(client.id, {
+      followUpDate: "2026-10-14",
+      followUpAction: "Ask for photos",
+      waitingOn: "Project photos",
+    }),
+  );
+  await clients.close();
+  clients = await mount(ClientProvider, useClients);
+  assert.equal(clients.value.clients[0].followUpDate, "2026-10-14");
+  await act(async () => clients.value.completeFollowUp(client.id));
+  assert.equal(clients.value.clients[0].followUpDate, "");
+  assert.equal(
+    clients.value.clients[0].waitingOn,
+    "Project photos",
+    "check-in completion must preserve outstanding client dependency",
+  );
+  assert.match(clients.value.clients[0].notes[0].content, /Ask for photos/);
+  const noteCount = clients.value.clients[0].notes.length;
+  await act(async () => clients.value.completeFollowUp(client.id));
+  assert.equal(
+    clients.value.clients[0].notes.length,
+    noteCount,
+    "repeated completion must not add duplicate notes",
+  );
   await clients.close();
   let projects = await mount(ProjectProvider, useProjects);
   let project;
