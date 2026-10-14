@@ -69,10 +69,7 @@ const navigation = [
   },
 ];
 
-export default function Sidebar({
-  isOpen = false,
-  onClose,
-}: SidebarProps) {
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -127,8 +124,7 @@ export default function Sidebar({
               const Icon = item.icon;
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/dashboard" &&
-                  pathname.startsWith(item.href));
+                (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
               return (
                 <Link
@@ -161,9 +157,7 @@ export default function Sidebar({
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="text-sm font-medium">Michael Sullivan</p>
-            <p className="mt-1 text-xs text-white/45">
-              Owner and developer
-            </p>
+            <p className="mt-1 text-xs text-white/45">Owner and developer</p>
           </div>
         </div>
       </aside>

@@ -35,7 +35,7 @@ global.localStorage = {
   getItem: (key) => records.get(key) ?? null,
   setItem: (key, value) => records.set(key, value),
 };
-global.window = { localStorage };
+global.window = { localStorage, addEventListener() {}, removeEventListener() {} };
 const {
   ClientProvider,
   useClients,

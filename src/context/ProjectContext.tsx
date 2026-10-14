@@ -1,12 +1,11 @@
 "use client";
 
+import { useStoredCollection } from "@/lib/useStoredCollection";
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
 import { projects as initialProjects } from "@/data/mock-data";
@@ -32,6 +31,10 @@ export interface CreateProjectInput {
 interface ProjectContextValue {
   projects: Project[];
   isLoaded: boolean;
+  error: string;
+  pending: number;
+  exportRecords: () => void;
+  importLocal: () => void;
   createProject: (input: CreateProjectInput) => Project;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
   deleteProject: (projectId: string) => void;
@@ -50,8 +53,6 @@ interface ProjectProviderProps {
   children: ReactNode;
 }
 
-const STORAGE_KEY = "paddock-projects";
-
 const ProjectContext = createContext<ProjectContextValue | undefined>(
   undefined,
 );
@@ -69,69 +70,48 @@ function createProjectId(name: string) {
 }
 
 export function ProjectProvider({ children }: ProjectProviderProps) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const {
+    records: projects,
+    setRecords: setProjects,
+    isLoaded,
+    error,
+    pending,
+    exportRecords,
+    importLocal,
+  } = useStoredCollection<Project>("projects", initialProjects);
 
-  useEffect(() => {
-    try {
-      const storedProjects = window.localStorage.getItem(STORAGE_KEY);
+  const createProject = useCallback(
+    (input: CreateProjectInput): Project => {
+      const project: Project = {
+        id: createProjectId(input.name),
+        name: input.name,
+        clientName: input.clientName,
+        clientEmail: input.clientEmail,
+        description: input.description,
+        status: input.status,
+        priority: input.priority,
+        progress: 0,
+        budget: input.budget,
+        amountPaid: 0,
+        estimatedHours: input.estimatedHours,
+        hoursWorked: 0,
+        startDate: input.startDate,
+        dueDate: input.dueDate,
+        technology: input.technology,
+        repositoryUrl: input.repositoryUrl,
+        stagingUrl: input.stagingUrl,
+        productionUrl: input.productionUrl,
+        milestones: [],
+        tasks: [],
+        documents: [],
+      };
 
-      if (storedProjects) {
-        const parsedProjects = JSON.parse(storedProjects) as Project[];
+      setProjects((currentProjects) => [project, ...currentProjects]);
 
-        if (Array.isArray(parsedProjects)) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate browser storage after mount.
-          setProjects(parsedProjects);
-        }
-      }
-    } catch (error) {
-      console.error("Unable to load projects from browser storage.", error);
-    } finally {
-      setIsLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    } catch (error) {
-      console.error("Unable to save projects to browser storage.", error);
-    }
-  }, [isLoaded, projects]);
-
-  const createProject = useCallback((input: CreateProjectInput): Project => {
-    const project: Project = {
-      id: createProjectId(input.name),
-      name: input.name,
-      clientName: input.clientName,
-      clientEmail: input.clientEmail,
-      description: input.description,
-      status: input.status,
-      priority: input.priority,
-      progress: 0,
-      budget: input.budget,
-      amountPaid: 0,
-      estimatedHours: input.estimatedHours,
-      hoursWorked: 0,
-      startDate: input.startDate,
-      dueDate: input.dueDate,
-      technology: input.technology,
-      repositoryUrl: input.repositoryUrl,
-      stagingUrl: input.stagingUrl,
-      productionUrl: input.productionUrl,
-      milestones: [],
-      tasks: [],
-      documents: [],
-    };
-
-    setProjects((currentProjects) => [project, ...currentProjects]);
-
-    return project;
-  }, []);
+      return project;
+    },
+    [setProjects],
+  );
 
   const updateProject = useCallback(
     (projectId: string, updates: Partial<Project>) => {
@@ -147,14 +127,17 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         ),
       );
     },
-    [],
+    [setProjects],
   );
 
-  const deleteProject = useCallback((projectId: string) => {
-    setProjects((currentProjects) =>
-      currentProjects.filter((project) => project.id !== projectId),
-    );
-  }, []);
+  const deleteProject = useCallback(
+    (projectId: string) => {
+      setProjects((currentProjects) =>
+        currentProjects.filter((project) => project.id !== projectId),
+      );
+    },
+    [setProjects],
+  );
 
   const addMilestone = useCallback(
     (projectId: string, milestoneInput: Omit<Milestone, "id">) => {
@@ -174,7 +157,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         ),
       );
     },
-    [],
+    [setProjects],
   );
 
   const addTask = useCallback(
@@ -195,7 +178,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         ),
       );
     },
-    [],
+    [setProjects],
   );
 
   const updateTask = useCallback(
@@ -219,21 +202,26 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         ),
       );
     },
-    [],
+    [setProjects],
   );
 
-  const deleteTask = useCallback((projectId: string, taskId: string) => {
-    setProjects((currentProjects) =>
-      currentProjects.map((project) =>
-        project.id === projectId
-          ? {
-              ...project,
-              tasks: (project.tasks ?? []).filter((task) => task.id !== taskId),
-            }
-          : project,
-      ),
-    );
-  }, []);
+  const deleteTask = useCallback(
+    (projectId: string, taskId: string) => {
+      setProjects((currentProjects) =>
+        currentProjects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                tasks: (project.tasks ?? []).filter(
+                  (task) => task.id !== taskId,
+                ),
+              }
+            : project,
+        ),
+      );
+    },
+    [setProjects],
+  );
 
   const getProjectById = useCallback(
     (projectId: string) => projects.find((project) => project.id === projectId),
@@ -244,6 +232,10 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     () => ({
       projects,
       isLoaded,
+      error,
+      pending,
+      exportRecords,
+      importLocal,
       createProject,
       updateProject,
       deleteProject,
@@ -256,6 +248,10 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     [
       projects,
       isLoaded,
+      error,
+      pending,
+      exportRecords,
+      importLocal,
       createProject,
       updateProject,
       deleteProject,
