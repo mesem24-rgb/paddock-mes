@@ -151,6 +151,36 @@ function pdf() {
   );
   if (savedUrl) process.env.NEXT_PUBLIC_SUPABASE_URL = savedUrl;
   if (savedKey) process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = savedKey;
+  const cloudModule = require("../src/lib/supabase/client.ts");
+  const originalGetSupabase = cloudModule.getSupabase;
+  let uploadFailure = false;
+  const storageCalls = [];
+  cloudModule.getSupabase = () => ({
+    auth: { getUser: async () => ({ data: { user: { id: "owner-id" } }, error: null }) },
+    storage: { from: name => ({
+      upload: async (path, file, options) => { storageCalls.push({ name, path, file, options }); return { error: uploadFailure ? { message: "bucket missing" } : null }; },
+      createSignedUrl: async (path, expires, options) => { storageCalls.push({ name, path, expires, options }); return { data: { signedUrl: "https://example.test/private-download" }, error: null }; },
+    }) },
+  });
+  const { saveOriginalDocument, downloadOriginalDocument } = require("../src/lib/documentStorage.ts");
+  const originalFile = new File(["contract"], "Example signed.pdf");
+  const stored = await saveOriginalDocument(originalFile, "doc-id");
+  assert.equal(stored.storagePath, "owner-id/doc-id/Example_signed.pdf");
+  assert.equal(stored.originalName, originalFile.name);
+  assert.equal(storageCalls[0].name, "project-documents");
+  assert.equal(storageCalls[0].options.upsert, false);
+  uploadFailure = true;
+  await assert.rejects(() => saveOriginalDocument(originalFile, "failed-id"), /Could not save the original file/);
+  uploadFailure = false;
+  const oldWindow = global.window;
+  const anchor = { click() {}, remove() {} };
+  global.window = { document: { createElement: () => anchor, body: { appendChild() {} } } };
+  await downloadOriginalDocument({ ...stored, id: "doc-id", name: originalFile.name });
+  assert.equal(storageCalls.at(-1).expires, 60);
+  assert.equal(storageCalls.at(-1).options.download, originalFile.name);
+  assert.equal(anchor.download, originalFile.name);
+  if (oldWindow === undefined) delete global.window; else global.window = oldWindow;
+  cloudModule.getSupabase = originalGetSupabase;
   const React = require("react");
   const { create, act } = require("react-test-renderer");
   function mock(filename, exports) {
@@ -218,6 +248,11 @@ function pdf() {
     __esModule: true,
     default: (props) => React.createElement("a", props, props.children),
   });
+  let failFileSave = true;
+  mock("../src/lib/documentStorage.ts", { saveOriginalDocument: async () => {
+    if (failFileSave) throw new Error("File storage is unavailable");
+    return { storagePath: "owner-id/document/original.pdf", originalName: "original.pdf" };
+  } });
   const Page = require("../src/app/(dashboard)/documents/page.tsx").default;
   let renderer;
   await act(async () => {
@@ -249,9 +284,10 @@ function pdf() {
       .props.onClick(),
   );
   assert.equal(updates[0].id, "project");
-  assert.equal(updates[0].fields.clientId, "client");
-  assert.equal(updates[0].fields.budget, 3800);
-  assert.equal(updates[0].fields.name, "Reviewed website");
+  assert.equal(updates[0].fields.clientId, undefined, "unchecked client link must be preserved");
+  assert.equal(updates[0].fields.budget, undefined, "unchecked budget must be preserved");
+  assert.equal(updates[0].fields.name, undefined, "unchecked name must be preserved");
+  assert.equal(updates[0].fields.startDate, undefined, "unchecked dates must be preserved");
   assert.equal(updates[0].fields.documents[0].sourceText, reviewSource);
   assert.equal(
     updates[0].fields.tasks,
@@ -263,6 +299,34 @@ function pdf() {
     0,
     "existing client fields require explicit opt-in",
   );
+  // A second import applies only the budget, with invoice suggestions unchecked.
+  await act(async () => renderer.root.findByType("textarea").props.onChange({ target: { value: reviewSource + "\nDeposit: $1,900" } }));
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Review extracted fields").props.onClick());
+  await act(async () => renderer.root.findAllByType("select")[0].props.onChange({ target: { value: "project" } }));
+  const toggle = label => renderer.root.findAllByType("input").find(i => i.props["aria-label"] === label);
+  await act(async () => toggle("Update Project budget ($)").props.onChange({ target: { checked: true } }));
+  // Locate by its label's rendered text, rather than relying on field order.
+  const invoiceLabel = renderer.root.findAllByType("label").find(l => l.children.some(c => typeof c === "string" && c.includes("Create this invoice")));
+  await act(async () => invoiceLabel.findByType("input").props.onChange({ target: { checked: false } }));
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
+  assert.equal(updates[1].fields.budget, 3800);
+  assert.equal(updates[1].fields.name, undefined);
+  assert.equal(updates[1].fields.clientId, undefined);
+  assert.equal(updates[1].fields.dueDate, undefined);
+  const previousFetch = global.fetch;
+  global.fetch = async () => Response.json({ text: reviewSource });
+  await act(async () => renderer.root.findAllByType("input").find(i => i.props.type === "file").props.onChange({ target: { files: [new File(["contract"], "original.pdf")] } }));
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Review extracted fields").props.onClick());
+  await act(async () => renderer.root.findAllByType("select")[0].props.onChange({ target: { value: "project" } }));
+  const beforeFailure = updates.length;
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
+  assert.equal(updates.length, beforeFailure, "failed file upload must not apply project changes");
+  assert.match(renderer.root.findByProps({ role: "alert" }).props.children, /File storage is unavailable/);
+  failFileSave = false;
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
+  assert.equal(updates.at(-1).fields.documents.at(-1).storagePath, "owner-id/document/original.pdf");
+  assert.equal(updates.at(-1).fields.name, undefined, "file-only save must preserve project fields");
+  global.fetch = previousFetch;
   await act(async () => renderer.unmount());
   console.log(
     "Passed: labeled suggestions, missing/invalid dates, invoice amounts, PDF/DOCX/TXT extraction, upload endpoint and sign-in guard.",

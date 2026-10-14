@@ -87,6 +87,9 @@ export interface ProjectTask {
 }
 
 export interface ProjectDocument {
+  storagePath?: string;
+  localFileId?: string;
+  originalName?: string;
   sourceText?: string;
   id: string;
   name: string;
