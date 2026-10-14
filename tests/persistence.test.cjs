@@ -168,6 +168,32 @@ async function mount(Provider, hook) {
   assert.equal(task.estimatedHours, 2);
   assert.equal(task.status, "In Progress");
   await projects.close();
+  projects = await mount(ProjectProvider, useProjects);
+  let templateProject;
+  await act(async () => {
+    templateProject = projects.value.createProject({
+      name: "Website template test",
+      templateId: "website",
+      clientName: "Test client",
+      description: "Template persistence test",
+      status: "Planning",
+      priority: "Medium",
+      budget: 1000,
+      startDate: "2026-10-14",
+      dueDate: "2026-11-14",
+      technology: [],
+    });
+  });
+  assert.equal(templateProject.milestones.length, 4);
+  assert.equal(templateProject.tasks.length, 9);
+  await projects.close();
+  projects = await mount(ProjectProvider, useProjects);
+  assert.equal(
+    projects.value.getProjectById(templateProject.id).tasks.length,
+    9,
+    "template tasks persist with the project",
+  );
+  await projects.close();
   let invoices = await mount(InvoiceProvider, useInvoices);
   await act(async () =>
     invoices.value.addInvoice({

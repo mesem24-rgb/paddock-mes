@@ -125,8 +125,14 @@ const Form =
         .props.onChange({ target: { name, value } }),
     );
   await act(async () =>
+    renderer.root
+      .findByProps({ id: "build-template" })
+      .props.onChange({ target: { value: "website" } }),
+  );
+  await act(async () =>
     renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }),
   );
+  assert.equal(created.templateId, "website");
   assert.equal(created.clientId, client.id);
   assert.equal(created.clientName, client.companyName);
   assert.equal(created.clientEmail, client.email);

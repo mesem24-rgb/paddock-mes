@@ -1,5 +1,6 @@
 "use client";
 
+import { createBuildPlan, type BuildTemplateId } from "@/lib/buildTemplates";
 import { useStoredCollection } from "@/lib/useStoredCollection";
 import {
   createContext,
@@ -12,6 +13,7 @@ import { projects as initialProjects } from "@/data/mock-data";
 import type { Milestone, Project, ProjectTask } from "@/types";
 
 export interface CreateProjectInput {
+  templateId?: BuildTemplateId;
   clientId?: string;
   name: string;
   clientName: string;
@@ -83,6 +85,11 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
   const createProject = useCallback(
     (input: CreateProjectInput): Project => {
+      const plan = createBuildPlan(
+        input.templateId,
+        input.startDate,
+        input.dueDate,
+      );
       const project: Project = {
         id: createProjectId(input.name),
         name: input.name,
@@ -103,8 +110,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         repositoryUrl: input.repositoryUrl,
         stagingUrl: input.stagingUrl,
         productionUrl: input.productionUrl,
-        milestones: [],
-        tasks: [],
+        milestones: plan.milestones,
+        tasks: plan.tasks,
         documents: [],
       };
 
