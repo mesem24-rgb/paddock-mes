@@ -176,3 +176,35 @@ assert.ok(
 console.log(
   "Passed: due follow-ups, attention ordering, paid/completed/archived exclusions, invoice conditions.",
 );
+
+const {
+  buildTemplates,
+  createBuildPlan,
+} = require("../src/lib/buildTemplates.ts");
+assert.deepEqual(createBuildPlan(undefined, "2026-10-14", "2026-11-14"), {
+  milestones: [],
+  tasks: [],
+});
+for (const template of buildTemplates) {
+  const plan = createBuildPlan(template.id, "2026-10-14", "2026-11-14");
+  assert.equal(plan.milestones.length, template.stages.length);
+  assert.equal(
+    plan.tasks.length,
+    template.stages.reduce((sum, stage) => sum + stage.tasks.length, 0),
+  );
+  assert.equal(plan.milestones.at(-1).dueDate, "2026-11-14");
+  assert.ok(
+    plan.tasks.every(
+      (t) => t.dueDate >= "2026-10-14" && t.dueDate <= "2026-11-14",
+    ),
+  );
+  assert.equal(
+    new Set([...plan.tasks, ...plan.milestones].map((item) => item.id)).size,
+    plan.tasks.length + plan.milestones.length,
+  );
+}
+const shortPlan = createBuildPlan("website", "2026-12-31", "2027-01-01");
+assert.equal(shortPlan.milestones.at(-1).dueDate, "2027-01-01");
+console.log(
+  "Passed: blank templates, generated plan sizes, unique IDs, project-window dates and year boundary.",
+);

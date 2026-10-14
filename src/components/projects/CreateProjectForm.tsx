@@ -22,6 +22,7 @@ import {
   clientOptions as savedClientOptions,
   INTERNAL_CLIENT,
 } from "@/lib/clientProjects";
+import { buildTemplates, type BuildTemplateId } from "@/lib/buildTemplates";
 import { useProjects } from "@/context/ProjectContext";
 import type { ProjectPriority, ProjectStatus } from "@/types";
 
@@ -110,6 +111,7 @@ export default function CreateProjectForm({
     ...initialValues,
     clientName: initialClientName,
   });
+  const [templateId, setTemplateId] = useState<BuildTemplateId | "">("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [technologies, setTechnologies] = useState<string[]>([
     "Next.js",
@@ -283,6 +285,7 @@ export default function CreateProjectForm({
     setIsSubmitting(true);
 
     const project = createProject({
+      templateId: templateId || undefined,
       name: values.name.trim(),
       clientId:
         selectedClient?.id === INTERNAL_CLIENT ? undefined : selectedClient?.id,
@@ -311,6 +314,55 @@ export default function CreateProjectForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      <section className="mb-6 rounded-2xl border border-[#dedfd9] bg-white p-5">
+        <label htmlFor="build-template" className="font-semibold">
+          Start with a build template
+        </label>
+        <select
+          id="build-template"
+          value={templateId}
+          onChange={(e) =>
+            setTemplateId(e.target.value as BuildTemplateId | "")
+          }
+          className="mt-3 block w-full rounded-xl border border-[#dedfd9] bg-white p-3"
+        >
+          <option value="">Blank project</option>
+          {buildTemplates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        {templateId ? (
+          <>
+            <p className="mt-3 text-sm text-[#71756e]">
+              Starter milestones and tasks are spread between your start and due
+              dates. Adjust them in the project workspace.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {buildTemplates
+                .find((t) => t.id === templateId)
+                ?.stages.map((stage) => (
+                  <div
+                    key={stage.title}
+                    className="rounded-xl bg-[#f5f5f0] p-3"
+                  >
+                    <h2 className="text-sm font-semibold">{stage.title}</h2>
+                    <ul className="mt-2 space-y-1 text-xs text-[#71756e]">
+                      {stage.tasks.map((task) => (
+                        <li key={task}>{task}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-[#71756e]">
+            Add milestones and tasks yourself, or choose a starting workflow.
+          </p>
+        )}
+      </section>
       {/* SECTION: Navigation */}
       <Link
         href="/projects"
