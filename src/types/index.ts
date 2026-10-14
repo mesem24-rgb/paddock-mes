@@ -1,9 +1,5 @@
 export type ProjectStatus =
-  | "Planning"
-  | "In Progress"
-  | "Client Review"
-  | "On Hold"
-  | "Completed";
+  "Planning" | "In Progress" | "Client Review" | "On Hold" | "Completed";
 
 export type ProjectPriority = "Low" | "Medium" | "High" | "Urgent";
 
@@ -12,10 +8,7 @@ export type TaskStatus = "To Do" | "In Progress" | "Blocked" | "Completed";
 export type TaskPriority = "Low" | "Medium" | "High";
 
 export type MilestoneStatus =
-  | "Upcoming"
-  | "In Progress"
-  | "Completed"
-  | "Delayed";
+  "Upcoming" | "In Progress" | "Completed" | "Delayed";
 
 export type ClientStatus = "Lead" | "Active" | "Inactive" | "Archived";
 
@@ -44,6 +37,9 @@ export interface ClientNote {
 }
 
 export interface BusinessClient {
+  followUpDate?: string;
+  followUpAction?: string;
+  waitingOn?: string;
   id: string;
   companyName: string;
   contactName: string;

@@ -36,6 +36,7 @@ interface ClientContextValue {
   deleteClient: (clientId: string) => void;
   getClientById: (clientId: string) => BusinessClient | undefined;
   addClientNote: (clientId: string, content: string) => void;
+  completeFollowUp: (clientId: string) => void;
 }
 
 const ClientContext = createContext<ClientContextValue | null>(null);
@@ -169,6 +170,32 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     [setClients],
   );
 
+  const completeFollowUp = useCallback(
+    (clientId: string) => {
+      setClients((current) =>
+        current.map((client) => {
+          if (client.id !== clientId || !client.followUpDate) return client;
+          const now = new Date().toISOString();
+          return {
+            ...client,
+            followUpDate: "",
+            followUpAction: "",
+            updatedAt: now,
+            notes: [
+              {
+                id: `note-${crypto.randomUUID()}`,
+                content: `Follow-up completed: ${client.followUpAction || "Client check-in"}`,
+                createdAt: now,
+              },
+              ...client.notes,
+            ],
+          };
+        }),
+      );
+    },
+    [setClients],
+  );
+
   const value = useMemo(
     () => ({
       clients,
@@ -182,6 +209,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       deleteClient,
       getClientById,
       addClientNote,
+      completeFollowUp,
     }),
     [
       clients,
@@ -195,6 +223,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       deleteClient,
       getClientById,
       addClientNote,
+      completeFollowUp,
     ],
   );
 

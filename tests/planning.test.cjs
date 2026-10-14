@@ -107,3 +107,72 @@ assert.deepEqual(
 console.log(
   "Passed: Monday-first weeks, year boundaries, date shifting, adjacent/overlapping blocks, midnight overlaps, completed tasks.",
 );
+
+const { needsAttention } = require("../src/lib/attention.ts");
+const reminders = needsAttention(
+  [
+    {
+      id: "build",
+      name: "Build",
+      clientName: "Client",
+      status: "In Progress",
+      dueDate: "2026-10-14",
+      tasks: [
+        {
+          id: "done",
+          title: "Done",
+          status: "Completed",
+          dueDate: "2026-10-13",
+        },
+        { id: "due", title: "Do work", status: "To Do", dueDate: "2026-10-14" },
+      ],
+    },
+  ],
+  [
+    {
+      id: "active",
+      companyName: "Client",
+      status: "Active",
+      followUpDate: "2026-10-13",
+      followUpAction: "Ask for files",
+    },
+    {
+      id: "archived",
+      companyName: "Old",
+      status: "Archived",
+      followUpDate: "2026-10-12",
+    },
+  ],
+  [
+    {
+      id: "paid",
+      description: "Paid",
+      status: "Paid",
+      sendDate: "2026-10-10",
+      dueDate: "2026-10-11",
+    },
+    {
+      id: "send",
+      description: "Deposit",
+      status: "Planned",
+      sendDate: "2026-10-14",
+      dueDate: "2026-10-20",
+      trigger: "Contract signed",
+    },
+    { id: "future", status: "Planned", sendDate: "2026-10-15" },
+    { id: "due-today", status: "Sent", dueDate: "2026-10-14" },
+  ],
+  "2026-10-14",
+);
+assert.equal(reminders.length, 4);
+assert.equal(reminders[0].id, "client:active");
+assert.ok(reminders.some((r) => r.id === "project:build"));
+assert.ok(reminders.some((r) => r.id === "task:build:due"));
+assert.ok(
+  reminders
+    .find((r) => r.id === "invoice:send")
+    .detail.includes("Contract signed"),
+);
+console.log(
+  "Passed: due follow-ups, attention ordering, paid/completed/archived exclusions, invoice conditions.",
+);
