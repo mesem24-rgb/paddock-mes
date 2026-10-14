@@ -232,6 +232,11 @@ export default function DocumentsPage() {
                   body: form,
                   headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
+                if (!response.headers.get("content-type")?.includes("application/json")) {
+                  throw new Error(
+                    `The upload service returned an unexpected page (HTTP ${response.status}). Refresh this preview and try again, or paste the document text.`,
+                  );
+                }
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error);
                 setText(result.text);
