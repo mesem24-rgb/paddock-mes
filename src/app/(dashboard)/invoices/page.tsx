@@ -1,7 +1,223 @@
-export default function Page() {
+"use client";
+import { useState } from "react";
+import { useProjects } from "@/context/ProjectContext";
+import { useInvoices, type Invoice } from "@/context/InvoiceContext";
+import { localDate } from "@/lib/planning";
+const money = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    n,
+  );
+export default function InvoicesPage() {
+  const { projects, isLoaded: projectsLoaded } = useProjects();
+  const { invoices, isLoaded, addInvoice, updateInvoice } = useInvoices();
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState("All");
+  if (!isLoaded || !projectsLoaded) return <p>Loading invoices…</p>;
+  const today = localDate();
+  const visible = invoices
+    .filter((i) => filter === "All" || i.status === filter)
+    .sort((a, b) => a.sendDate.localeCompare(b.sendDate));
   return (
-    <div>
-      <h1 className="text-3xl font-semibold">Coming soon</h1>
+    <div className="mx-auto max-w-6xl">
+      <h1 className="text-3xl font-semibold">Invoice schedule</h1>
+      <p className="mt-2 text-[#71756e]">
+        Track when to send invoices and follow up on payments. Sending and
+        payment collection happen through your existing process.
+      </p>
+      <div className="my-6 grid gap-4 sm:grid-cols-3">
+        {[
+          [
+            "Ready to send",
+            String(
+              invoices.filter(
+                (i) => i.status === "Planned" && i.sendDate <= today,
+              ).length,
+            ),
+          ],
+          [
+            "Outstanding",
+            money(
+              invoices
+                .filter((i) => i.status === "Sent")
+                .reduce((n, i) => n + i.amount, 0),
+            ),
+          ],
+          [
+            "Overdue",
+            money(
+              invoices
+                .filter((i) => i.status === "Sent" && i.dueDate < today)
+                .reduce((n, i) => n + i.amount, 0),
+            ),
+          ],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border bg-white p-5">
+            <p className="text-sm text-[#71756e]">{label}</p>
+            <p className="mt-2 text-2xl font-semibold">{value}</p>
+          </div>
+        ))}
+      </div>
+      <form
+        className="grid gap-4 rounded-2xl border bg-white p-5 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const d = new FormData(form);
+          const amount = Number(d.get("amount"));
+          const sendDate = String(d.get("sendDate"));
+          const dueDate = String(d.get("dueDate"));
+          const projectId = String(d.get("project"));
+          if (
+            !projects.some((p) => p.id === projectId) ||
+            !Number.isFinite(amount) ||
+            amount <= 0 ||
+            dueDate < sendDate
+          ) {
+            setError(
+              "Choose a project, enter a positive amount, and set a due date on or after the send date.",
+            );
+            return;
+          }
+          addInvoice({
+            projectId,
+            description: String(d.get("description")).trim(),
+            amount,
+            sendDate,
+            dueDate,
+            trigger: String(d.get("trigger")).trim(),
+            status: "Planned",
+          });
+          form.reset();
+          setError("");
+        }}
+      >
+        <label>
+          Project
+          <select
+            name="project"
+            required
+            className="mt-1 block w-full rounded-lg border p-3"
+          >
+            <option value="">Choose project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Description
+          <input
+            name="description"
+            placeholder="Design approval payment"
+            required
+            className="mt-1 block w-full rounded-lg border p-3"
+          />
+        </label>
+        <label>
+          Amount ($)
+          <input
+            name="amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+            className="mt-1 block w-full rounded-lg border p-3"
+          />
+        </label>
+        <label>
+          Milestone / condition (optional)
+          <input
+            name="trigger"
+            placeholder="Confirm client approval before sending"
+            className="mt-1 block w-full rounded-lg border p-3"
+          />
+        </label>
+        <label>
+          Send date
+          <input
+            name="sendDate"
+            type="date"
+            defaultValue={today}
+            required
+            className="mt-1 block w-full rounded-lg border p-3"
+          />
+        </label>
+        <label>
+          Payment due
+          <input
+            name="dueDate"
+            type="date"
+            required
+            className="mt-1 block w-full rounded-lg border p-3"
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-red-700">
+            {error}
+          </p>
+        )}
+        <button className="rounded-lg bg-[#171918] p-3 text-white sm:col-span-2">
+          Schedule invoice
+        </button>
+      </form>
+      <label className="my-5 block">
+        Show{" "}
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-lg border bg-white p-2"
+        >
+          {["All", "Planned", "Sent", "Paid"].map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </label>
+      <div className="space-y-3">
+        {visible.map((i) => (
+          <article
+            key={i.id}
+            className="flex flex-wrap items-center gap-4 rounded-xl border bg-white p-5"
+          >
+            <div className="mr-auto">
+              <h2 className="font-semibold">
+                {i.description} · {money(i.amount)}
+              </h2>
+              <p className="text-sm text-[#71756e]">
+                {projects.find((p) => p.id === i.projectId)?.name ??
+                  "Project unavailable"}{" "}
+                · Send {i.sendDate} · Due {i.dueDate}
+              </p>
+              {i.trigger && (
+                <p className="mt-1 text-sm">Condition: {i.trigger}</p>
+              )}
+              {i.status === "Planned" && i.sendDate <= today && (
+                <p className="mt-1 text-sm font-medium">
+                  Ready to review and send
+                  {i.trigger ? " — check condition first" : ""}
+                </p>
+              )}
+              {i.status === "Sent" && i.dueDate < today && (
+                <p className="text-sm text-red-700">Overdue — follow up</p>
+              )}
+            </div>
+            <select
+              aria-label={`Status for ${i.description}`}
+              value={i.status}
+              onChange={(e) =>
+                updateInvoice(i.id, e.target.value as Invoice["status"])
+              }
+              className="rounded-lg border p-2"
+            >
+              {["Planned", "Sent", "Paid"].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </article>
+        ))}
+      </div>
+      {!visible.length && <p className="py-8">No invoices in this view.</p>}
     </div>
   );
 }

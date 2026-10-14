@@ -79,6 +79,9 @@ export interface Milestone {
 }
 
 export interface ProjectTask {
+  scheduledDate?: string;
+  scheduledTime?: string;
+  estimatedHours?: number;
   id: string;
   title: string;
   status: TaskStatus;

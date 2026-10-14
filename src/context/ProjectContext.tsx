@@ -80,6 +80,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         const parsedProjects = JSON.parse(storedProjects) as Project[];
 
         if (Array.isArray(parsedProjects)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate browser storage after mount.
           setProjects(parsedProjects);
         }
       }

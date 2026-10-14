@@ -24,7 +24,7 @@ import {
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import ProjectStat from "@/components/projects/ProjectStat";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useProjects } from "@/context/ProjectContext";
@@ -155,18 +155,15 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
 
-  const [editValues, setEditValues] = useState<EditProjectValues | null>(null);
+  const [draftValues, setEditValues] = useState<EditProjectValues | null>(null);
 
   const [milestoneValues, setMilestoneValues] =
     useState<MilestoneFormValues>(emptyMilestone);
 
   const [taskValues, setTaskValues] = useState<TaskFormValues>(emptyTask);
 
-  useEffect(() => {
-    if (project) {
-      setEditValues(getInitialEditValues(project));
-    }
-  }, [project]);
+  const editValues =
+    draftValues ?? (project ? getInitialEditValues(project) : null);
 
   const completedTasks = useMemo(
     () =>
@@ -645,7 +642,10 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
               <button
                 type="button"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  setEditValues(getInitialEditValues(project));
+                  setIsEditing(true);
+                }}
                 className="flex items-center gap-2 rounded-xl bg-[#171918] px-4 py-3 text-sm font-medium text-white"
               >
                 <Pencil size={16} />

@@ -15,7 +15,6 @@ import {
   Save,
   StickyNote,
   Trash2,
-  UserRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
