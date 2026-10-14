@@ -10,10 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { initialClients } from "@/data/clients";
-import type {
-  BusinessClient,
-  ClientNote,
-} from "@/types";
+import type { BusinessClient, ClientNote } from "@/types";
 
 const STORAGE_KEY = "paddock-clients";
 
@@ -33,25 +30,14 @@ export interface CreateClientInput {
 interface ClientContextValue {
   clients: BusinessClient[];
   isLoaded: boolean;
-  createClient: (
-    input: CreateClientInput,
-  ) => BusinessClient;
-  updateClient: (
-    clientId: string,
-    updates: Partial<BusinessClient>,
-  ) => void;
+  createClient: (input: CreateClientInput) => BusinessClient;
+  updateClient: (clientId: string, updates: Partial<BusinessClient>) => void;
   deleteClient: (clientId: string) => void;
-  getClientById: (
-    clientId: string,
-  ) => BusinessClient | undefined;
-  addClientNote: (
-    clientId: string,
-    content: string,
-  ) => void;
+  getClientById: (clientId: string) => BusinessClient | undefined;
+  addClientNote: (clientId: string, content: string) => void;
 }
 
-const ClientContext =
-  createContext<ClientContextValue | null>(null);
+const ClientContext = createContext<ClientContextValue | null>(null);
 
 function createSlug(value: string) {
   return value
@@ -59,22 +45,6 @@ function createSlug(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-}
-
-function createClientId(
-  companyName: string,
-  existingClients: BusinessClient[],
-) {
-  const baseId =
-    createSlug(companyName) || `client-${Date.now()}`;
-
-  const alreadyExists = existingClients.some(
-    (client) => client.id === baseId,
-  );
-
-  return alreadyExists
-    ? `${baseId}-${Date.now()}`
-    : baseId;
 }
 
 function splitContactName(contactName: string) {
@@ -88,32 +58,22 @@ function splitContactName(contactName: string) {
   };
 }
 
-export function ClientProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [clients, setClients] =
-    useState<BusinessClient[]>(initialClients);
+export function ClientProvider({ children }: { children: ReactNode }) {
+  const [clients, setClients] = useState<BusinessClient[]>(initialClients);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     try {
-      const storedClients =
-        window.localStorage.getItem(STORAGE_KEY);
+      const storedClients = window.localStorage.getItem(STORAGE_KEY);
 
       if (storedClients) {
-        const parsedClients = JSON.parse(
-          storedClients,
-        ) as BusinessClient[];
+        const parsedClients = JSON.parse(storedClients) as BusinessClient[];
 
-        setClients(parsedClients);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate browser storage after mount.
+        if (Array.isArray(parsedClients)) setClients(parsedClients);
       }
     } catch (error) {
-      console.error(
-        "Unable to load clients from local storage.",
-        error,
-      );
+      console.error("Unable to load clients from local storage.", error);
     } finally {
       setIsLoaded(true);
     }
@@ -125,77 +85,49 @@ export function ClientProvider({
     }
 
     try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(clients),
-      );
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
     } catch (error) {
-      console.error(
-        "Unable to save clients to local storage.",
-        error,
-      );
+      console.error("Unable to save clients to local storage.", error);
     }
   }, [clients, isLoaded]);
 
-  const createClient = useCallback(
-    (input: CreateClientInput) => {
-      const now = new Date().toISOString();
-      const { firstName, lastName } =
-        splitContactName(input.contactName);
+  const createClient = useCallback((input: CreateClientInput) => {
+    const now = new Date().toISOString();
+    const { firstName, lastName } = splitContactName(input.contactName);
 
-      let createdClient: BusinessClient | null = null;
-
-      setClients((currentClients) => {
-        createdClient = {
-          id: createClientId(
-            input.companyName,
-            currentClients,
-          ),
-          companyName: input.companyName.trim(),
-          contactName: input.contactName.trim(),
+    const createdClient: BusinessClient = {
+      id: `${createSlug(input.companyName) || "client"}-${crypto.randomUUID()}`,
+      companyName: input.companyName.trim(),
+      contactName: input.contactName.trim(),
+      email: input.email.trim(),
+      phone: input.phone?.trim() || undefined,
+      website: input.website?.trim() || undefined,
+      industry: input.industry?.trim() || undefined,
+      location: input.location?.trim() || undefined,
+      status: input.status,
+      source: input.source,
+      description: input.description?.trim() || undefined,
+      createdAt: now,
+      updatedAt: now,
+      contacts: [
+        {
+          id: `contact-${Date.now()}`,
+          firstName,
+          lastName,
           email: input.email.trim(),
           phone: input.phone?.trim() || undefined,
-          website: input.website?.trim() || undefined,
-          industry:
-            input.industry?.trim() || undefined,
-          location:
-            input.location?.trim() || undefined,
-          status: input.status,
-          source: input.source,
-          description:
-            input.description?.trim() || undefined,
-          createdAt: now,
-          updatedAt: now,
-          contacts: [
-            {
-              id: `contact-${Date.now()}`,
-              firstName,
-              lastName,
-              email: input.email.trim(),
-              phone: input.phone?.trim() || undefined,
-              isPrimary: true,
-            },
-          ],
-          notes: [],
-        };
+          isPrimary: true,
+        },
+      ],
+      notes: [],
+    };
+    setClients((current) => [...current, createdClient]);
 
-        return [...currentClients, createdClient];
-      });
-
-      if (!createdClient) {
-        throw new Error("Unable to create client.");
-      }
-
-      return createdClient;
-    },
-    [],
-  );
+    return createdClient;
+  }, []);
 
   const updateClient = useCallback(
-    (
-      clientId: string,
-      updates: Partial<BusinessClient>,
-    ) => {
+    (clientId: string, updates: Partial<BusinessClient>) => {
       setClients((currentClients) =>
         currentClients.map((client) =>
           client.id === clientId
@@ -212,51 +144,42 @@ export function ClientProvider({
     [],
   );
 
-  const deleteClient = useCallback(
-    (clientId: string) => {
-      setClients((currentClients) =>
-        currentClients.filter(
-          (client) => client.id !== clientId,
-        ),
-      );
-    },
-    [],
-  );
+  const deleteClient = useCallback((clientId: string) => {
+    setClients((currentClients) =>
+      currentClients.filter((client) => client.id !== clientId),
+    );
+  }, []);
 
   const getClientById = useCallback(
-    (clientId: string) =>
-      clients.find((client) => client.id === clientId),
+    (clientId: string) => clients.find((client) => client.id === clientId),
     [clients],
   );
 
-  const addClientNote = useCallback(
-    (clientId: string, content: string) => {
-      const trimmedContent = content.trim();
+  const addClientNote = useCallback((clientId: string, content: string) => {
+    const trimmedContent = content.trim();
 
-      if (!trimmedContent) {
-        return;
-      }
+    if (!trimmedContent) {
+      return;
+    }
 
-      const note: ClientNote = {
-        id: `note-${Date.now()}`,
-        content: trimmedContent,
-        createdAt: new Date().toISOString(),
-      };
+    const note: ClientNote = {
+      id: `note-${Date.now()}`,
+      content: trimmedContent,
+      createdAt: new Date().toISOString(),
+    };
 
-      setClients((currentClients) =>
-        currentClients.map((client) =>
-          client.id === clientId
-            ? {
-                ...client,
-                updatedAt: new Date().toISOString(),
-                notes: [note, ...client.notes],
-              }
-            : client,
-        ),
-      );
-    },
-    [],
-  );
+    setClients((currentClients) =>
+      currentClients.map((client) =>
+        client.id === clientId
+          ? {
+              ...client,
+              updatedAt: new Date().toISOString(),
+              notes: [note, ...client.notes],
+            }
+          : client,
+      ),
+    );
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -280,9 +203,7 @@ export function ClientProvider({
   );
 
   return (
-    <ClientContext.Provider value={value}>
-      {children}
-    </ClientContext.Provider>
+    <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
   );
 }
 
@@ -290,9 +211,7 @@ export function useClients() {
   const context = useContext(ClientContext);
 
   if (!context) {
-    throw new Error(
-      "useClients must be used inside ClientProvider.",
-    );
+    throw new Error("useClients must be used inside ClientProvider.");
   }
 
   return context;

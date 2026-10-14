@@ -1,13 +1,5 @@
-import CreateProjectForm from "@/components/projects/CreateProjectForm";
-
-export const metadata = {
-  title: "New Project",
-};
-
-export default function NewProjectPage() {
-  return (
-    <div className="mx-auto max-w-[1400px]">
-      <CreateProjectForm />
-    </div>
-  );
+import ProjectList from "@/components/projects/ProjectList";
+export const metadata = { title: "Projects" };
+export default function ProjectsPage() {
+  return <ProjectList />;
 }

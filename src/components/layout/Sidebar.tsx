@@ -48,7 +48,7 @@ const navigation = [
     icon: BriefcaseBusiness,
   },
   {
-    name: "Time",
+    name: "Planner",
     href: "/time",
     icon: Clock3,
   },
