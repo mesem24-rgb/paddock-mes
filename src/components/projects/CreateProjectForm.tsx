@@ -16,19 +16,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useClients } from "@/context/ClientContext";
 import {
-  useMemo,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
+  clientOptions as savedClientOptions,
+  INTERNAL_CLIENT,
+} from "@/lib/clientProjects";
 import { useProjects } from "@/context/ProjectContext";
-import type {
-  ProjectPriority,
-  ProjectStatus,
-} from "@/types";
+import type { ProjectPriority, ProjectStatus } from "@/types";
 
 interface ProjectFormValues {
+  clientId: string;
   name: string;
   clientName: string;
   clientEmail: string;
@@ -45,17 +43,6 @@ interface ProjectFormValues {
 }
 
 type FormErrors = Partial<Record<keyof ProjectFormValues, string>>;
-
-const clientOptions = [
-  {
-    name: "Internal",
-    email: "mesem24@gmail.com",
-  },
-  {
-    name: "Compass Group Recruiting",
-    email: "hans@compassgrouprecruiting.com",
-  },
-];
 
 const suggestedTechnologies = [
   "Next.js",
@@ -80,6 +67,7 @@ function getFutureDate(days: number) {
 }
 
 const initialValues: ProjectFormValues = {
+  clientId: "",
   name: "",
   clientName: "",
   clientEmail: "",
@@ -108,12 +96,20 @@ function validateUrl(value: string) {
   }
 }
 
-export default function CreateProjectForm() {
+export default function CreateProjectForm({
+  initialClientName = "",
+}: {
+  initialClientName?: string;
+}) {
   const router = useRouter();
   const { createProject } = useProjects();
+  const { clients, isLoaded: clientsLoaded } = useClients();
+  const clientOptions = useMemo(() => savedClientOptions(clients), [clients]);
 
-  const [values, setValues] =
-    useState<ProjectFormValues>(initialValues);
+  const [values, setValues] = useState<ProjectFormValues>({
+    ...initialValues,
+    clientName: initialClientName,
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [technologies, setTechnologies] = useState<string[]>([
     "Next.js",
@@ -125,10 +121,12 @@ export default function CreateProjectForm() {
 
   const selectedClient = useMemo(
     () =>
-      clientOptions.find(
-        (client) => client.name === values.clientName,
+      clientOptions.find((client) =>
+        values.clientId
+          ? client.id === values.clientId
+          : client.name === values.clientName,
       ),
-    [values.clientName],
+    [values.clientName, values.clientId, clientOptions],
   );
 
   function handleChange(
@@ -150,15 +148,16 @@ export default function CreateProjectForm() {
   }
 
   function handleClientChange(event: ChangeEvent<HTMLSelectElement>) {
-    const clientName = event.target.value;
+    const clientId = event.target.value;
 
     const matchedClient = clientOptions.find(
-      (client) => client.name === clientName,
+      (client) => client.id === clientId,
     );
 
     setValues((currentValues) => ({
       ...currentValues,
-      clientName,
+      clientId,
+      clientName: matchedClient?.name ?? "",
       clientEmail: matchedClient?.email ?? "",
     }));
 
@@ -203,7 +202,7 @@ export default function CreateProjectForm() {
       nextErrors.name = "Enter a project name.";
     }
 
-    if (!values.clientName.trim()) {
+    if (!selectedClient) {
       nextErrors.clientName = "Select or enter a client.";
     }
 
@@ -229,12 +228,8 @@ export default function CreateProjectForm() {
       nextErrors.budget = "Enter a valid budget.";
     }
 
-    if (
-      values.estimatedHours &&
-      Number(values.estimatedHours) < 0
-    ) {
-      nextErrors.estimatedHours =
-        "Estimated hours cannot be negative.";
+    if (values.estimatedHours && Number(values.estimatedHours) < 0) {
+      nextErrors.estimatedHours = "Estimated hours cannot be negative.";
     }
 
     if (!values.startDate) {
@@ -250,8 +245,7 @@ export default function CreateProjectForm() {
       values.dueDate &&
       values.dueDate < values.startDate
     ) {
-      nextErrors.dueDate =
-        "The due date must be after the start date.";
+      nextErrors.dueDate = "The due date must be after the start date.";
     }
 
     if (!validateUrl(values.repositoryUrl)) {
@@ -290,8 +284,11 @@ export default function CreateProjectForm() {
 
     const project = createProject({
       name: values.name.trim(),
-      clientName: values.clientName.trim(),
-      clientEmail: values.clientEmail.trim() || undefined,
+      clientId:
+        selectedClient?.id === INTERNAL_CLIENT ? undefined : selectedClient?.id,
+      clientName: selectedClient?.name ?? values.clientName.trim(),
+      clientEmail:
+        values.clientEmail.trim() || selectedClient?.email || undefined,
       description: values.description.trim(),
       status: values.status,
       priority: values.priority,
@@ -309,6 +306,8 @@ export default function CreateProjectForm() {
 
     router.push(`/projects/${project.id}`);
   }
+
+  if (!clientsLoaded) return <p>Loading clients…</p>;
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -419,7 +418,7 @@ export default function CreateProjectForm() {
                     <select
                       id="clientName"
                       name="clientName"
-                      value={values.clientName}
+                      value={selectedClient?.id ?? ""}
                       onChange={handleClientChange}
                       className={`${getInputClass(
                         Boolean(errors.clientName),
@@ -428,7 +427,7 @@ export default function CreateProjectForm() {
                       <option value="">Select a client</option>
 
                       {clientOptions.map((client) => (
-                        <option key={client.name} value={client.name}>
+                        <option key={client.id} value={client.id}>
                           {client.name}
                         </option>
                       ))}
@@ -445,12 +444,13 @@ export default function CreateProjectForm() {
                     id="clientEmail"
                     name="clientEmail"
                     type="email"
-                    value={values.clientEmail}
+                    value={
+                      values.clientEmail ||
+                      (values.clientId ? "" : (selectedClient?.email ?? ""))
+                    }
                     onChange={handleChange}
                     placeholder="client@example.com"
-                    className={getInputClass(
-                      Boolean(errors.clientEmail),
-                    )}
+                    className={getInputClass(Boolean(errors.clientEmail))}
                   />
                 </FormField>
               </div>
@@ -589,9 +589,7 @@ export default function CreateProjectForm() {
           {/* SECTION: Technology */}
           <section className="rounded-2xl border border-[#dedfd9] bg-white">
             <div className="border-b border-[#ecece6] px-5 py-4 sm:px-6">
-              <h2 className="font-semibold text-[#20231f]">
-                Technology
-              </h2>
+              <h2 className="font-semibold text-[#20231f]">Technology</h2>
 
               <p className="mt-1 text-xs text-[#898d85]">
                 Record the primary tools and services used in the build.
@@ -608,9 +606,7 @@ export default function CreateProjectForm() {
 
                   <input
                     value={technologyInput}
-                    onChange={(event) =>
-                      setTechnologyInput(event.target.value)
-                    }
+                    onChange={(event) => setTechnologyInput(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         event.preventDefault();
@@ -702,9 +698,7 @@ export default function CreateProjectForm() {
                   value={values.repositoryUrl}
                   onChange={handleChange}
                   placeholder="https://github.com/username/project"
-                  className={getInputClass(
-                    Boolean(errors.repositoryUrl),
-                  )}
+                  className={getInputClass(Boolean(errors.repositoryUrl))}
                 />
               </FormField>
 
@@ -798,9 +792,7 @@ export default function CreateProjectForm() {
                     value={values.budget}
                     onChange={handleChange}
                     placeholder="15000"
-                    className={`${getInputClass(
-                      Boolean(errors.budget),
-                    )} pl-10`}
+                    className={`${getInputClass(Boolean(errors.budget))} pl-10`}
                   />
                 </div>
               </FormField>
@@ -842,8 +834,7 @@ export default function CreateProjectForm() {
                     <p className="mt-2 text-xl font-semibold text-[#252825]">
                       $
                       {(
-                        Number(values.budget) /
-                        Number(values.estimatedHours)
+                        Number(values.budget) / Number(values.estimatedHours)
                       ).toFixed(2)}
                       /hr
                     </p>
@@ -874,15 +865,9 @@ export default function CreateProjectForm() {
                 value={values.clientName || "Not selected"}
               />
 
-              <SummaryRow
-                label="Status"
-                value={values.status}
-              />
+              <SummaryRow label="Status" value={values.status} />
 
-              <SummaryRow
-                label="Priority"
-                value={values.priority}
-              />
+              <SummaryRow label="Priority" value={values.priority} />
 
               <SummaryRow
                 label="Technology"
@@ -971,9 +956,7 @@ function SummaryRow({ label, value }: SummaryRowProps) {
   return (
     <div className="flex items-start justify-between gap-4">
       <span className="text-white/45">{label}</span>
-      <span className="text-right font-medium text-white/85">
-        {value}
-      </span>
+      <span className="text-right font-medium text-white/85">{value}</span>
     </div>
   );
 }

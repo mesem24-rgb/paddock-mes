@@ -1,4 +1,5 @@
 "use client";
+import { projectBelongsToClient } from "@/lib/clientProjects";
 
 import {
   Building2,
@@ -49,8 +50,7 @@ export default function ClientsOverview() {
     return clients.map((client) => {
       const clientProjects = projects.filter(
         (project) =>
-          project.clientName.toLowerCase() ===
-          client.companyName.toLowerCase(),
+          projectBelongsToClient(project, client),
       );
 
       return {

@@ -24,7 +24,12 @@ import {
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { useClients } from "@/context/ClientContext";
+import {
+  clientOptions as savedClientOptions,
+  INTERNAL_CLIENT,
+} from "@/lib/clientProjects";
 import ProjectStat from "@/components/projects/ProjectStat";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useProjects } from "@/context/ProjectContext";
@@ -42,6 +47,7 @@ interface ProjectWorkspaceProps {
 }
 
 interface EditProjectValues {
+  clientId: string;
   name: string;
   clientName: string;
   clientEmail: string;
@@ -101,6 +107,7 @@ function formatDate(date: string) {
 function getInitialEditValues(project: Project): EditProjectValues {
   return {
     name: project.name,
+    clientId: project.clientId ?? "",
     clientName: project.clientName,
     clientEmail: project.clientEmail ?? "",
     description: project.description,
@@ -149,6 +156,8 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   } = useProjects();
 
   const project = getProjectById(projectId);
+  const { clients, isLoaded: clientsLoaded } = useClients();
+  const clientOptions = savedClientOptions(clients);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -165,13 +174,10 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const editValues =
     draftValues ?? (project ? getInitialEditValues(project) : null);
 
-  const completedTasks = useMemo(
-    () =>
-      project?.tasks?.filter((task) => task.status === "Completed").length ?? 0,
-    [project],
-  );
+  const completedTasks =
+    project?.tasks?.filter((task) => task.status === "Completed").length ?? 0;
 
-  if (!isLoaded) {
+  if (!isLoaded || !clientsLoaded) {
     return (
       <div className="mx-auto max-w-[1600px]">
         <div className="h-8 w-40 animate-pulse rounded-lg bg-white" />
@@ -226,6 +232,7 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
     updateProject(project.id, {
       name: editValues.name.trim(),
+      clientId: editValues.clientId || undefined,
       clientName: editValues.clientName.trim(),
       clientEmail: editValues.clientEmail.trim() || undefined,
       description: editValues.description.trim(),
@@ -350,17 +357,47 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             </EditField>
 
             <EditField label="Client">
-              <input
+              <select
                 required
-                value={editValues.clientName}
-                onChange={(event) =>
-                  setEditValues({
-                    ...editValues,
-                    clientName: event.target.value,
-                  })
+                aria-label="Project client"
+                value={
+                  editValues.clientId ||
+                  (editValues.clientName === "Internal"
+                    ? INTERNAL_CLIENT
+                    : "__legacy__")
                 }
+                onChange={(event) => {
+                  const option = clientOptions.find(
+                    (c) => c.id === event.target.value,
+                  );
+                  if (option)
+                    setEditValues({
+                      ...editValues,
+                      clientId: option.id === INTERNAL_CLIENT ? "" : option.id,
+                      clientName: option.name,
+                      clientEmail: option.email,
+                    });
+                }}
                 className={inputClass}
-              />
+              >
+                {!editValues.clientId &&
+                  editValues.clientName !== "Internal" && (
+                    <option value="__legacy__">
+                      {editValues.clientName} (existing name)
+                    </option>
+                  )}
+                {editValues.clientId &&
+                  !clientOptions.some((c) => c.id === editValues.clientId) && (
+                    <option value={editValues.clientId}>
+                      {editValues.clientName} (unavailable client)
+                    </option>
+                  )}
+                {clientOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </EditField>
 
             <EditField label="Client email">
