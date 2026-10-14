@@ -20,7 +20,10 @@ const Context = createContext<{
   exportRecords: () => void;
   importLocal: () => void;
   addInvoice: (invoice: Omit<Invoice, "id">) => void;
-  updateInvoice: (id: string, status: Invoice["status"]) => void;
+  updateInvoice: (
+    id: string,
+    updates: Invoice["status"] | Partial<Omit<Invoice, "id">>,
+  ) => void;
 } | null>(null);
 export function InvoiceProvider({ children }: { children: ReactNode }) {
   const {
@@ -46,9 +49,19 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
             ...current,
             { ...invoice, id: crypto.randomUUID() },
           ]),
-        updateInvoice: (id, status) =>
+        updateInvoice: (id, updates) =>
           setRecords((current) =>
-            current.map((i) => (i.id === id ? { ...i, status } : i)),
+            current.map((i) =>
+              i.id === id
+                ? {
+                    ...i,
+                    ...(typeof updates === "string"
+                      ? { status: updates }
+                      : updates),
+                    id: i.id,
+                  }
+                : i,
+            ),
           ),
       }}
     >

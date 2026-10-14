@@ -35,7 +35,11 @@ global.localStorage = {
   getItem: (key) => records.get(key) ?? null,
   setItem: (key, value) => records.set(key, value),
 };
-global.window = { localStorage, addEventListener() {}, removeEventListener() {} };
+global.window = {
+  localStorage,
+  addEventListener() {},
+  removeEventListener() {},
+};
 const {
   ClientProvider,
   useClients,
@@ -153,10 +157,20 @@ async function mount(Provider, hook) {
   );
   const id = invoices.value.invoices[0].id;
   await act(async () => invoices.value.updateInvoice(id, "Paid"));
+  await act(async () =>
+    invoices.value.updateInvoice(id, {
+      amount: 650,
+      sendDate: "2026-10-16",
+      trigger: "Design approved",
+    }),
+  );
   await invoices.close();
   invoices = await mount(InvoiceProvider, useInvoices);
   assert.equal(invoices.value.invoices[0].status, "Paid");
-  assert.equal(invoices.value.invoices[0].amount, 500);
+  assert.equal(invoices.value.invoices[0].amount, 650);
+  assert.equal(invoices.value.invoices[0].sendDate, "2026-10-16");
+  assert.equal(invoices.value.invoices[0].trigger, "Design approved");
+  assert.equal(invoices.value.invoices[0].id, id);
   await invoices.close();
   assert.equal(
     localDate(new Date(2026, 9, 14, 23, 59)),

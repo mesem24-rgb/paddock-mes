@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node tests/persistence.test.cjs && node tests/cloud.test.cjs"
+    "test": "node tests/persistence.test.cjs && node tests/cloud.test.cjs && node tests/planning.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
