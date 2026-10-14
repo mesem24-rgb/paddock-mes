@@ -1244,6 +1244,16 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       <p className="mt-1 text-xs text-[#8a8e86]">
                         {document.type} · {document.size}
                       </p>
+                      {document.sourceText && (
+                        <details className="mt-2 text-sm">
+                          <summary className="cursor-pointer">
+                            Read imported text
+                          </summary>
+                          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#f5f5f0] p-3 text-xs">
+                            {document.sourceText}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   </div>
                 ))}

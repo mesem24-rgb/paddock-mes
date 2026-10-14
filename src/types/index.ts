@@ -87,6 +87,7 @@ export interface ProjectTask {
 }
 
 export interface ProjectDocument {
+  sourceText?: string;
   id: string;
   name: string;
   type: string;
