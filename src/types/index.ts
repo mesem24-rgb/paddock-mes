@@ -95,6 +95,7 @@ export interface ProjectDocument {
 }
 
 export interface Project {
+  clientId?: string;
   id: string;
   name: string;
   clientName: string;

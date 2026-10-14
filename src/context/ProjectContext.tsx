@@ -12,6 +12,7 @@ import { projects as initialProjects } from "@/data/mock-data";
 import type { Milestone, Project, ProjectTask } from "@/types";
 
 export interface CreateProjectInput {
+  clientId?: string;
   name: string;
   clientName: string;
   clientEmail?: string;
@@ -85,6 +86,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       const project: Project = {
         id: createProjectId(input.name),
         name: input.name,
+        clientId: input.clientId,
         clientName: input.clientName,
         clientEmail: input.clientEmail,
         description: input.description,

@@ -1,4 +1,5 @@
 "use client";
+import { projectBelongsToClient } from "@/lib/clientProjects";
 
 import {
   ArrowLeft,
@@ -117,8 +118,7 @@ export default function ClientWorkspace({
 
     return projects.filter(
       (project) =>
-        project.clientName.trim().toLowerCase() ===
-        client.companyName.trim().toLowerCase(),
+        projectBelongsToClient(project, client),
     );
   }, [client, projects]);
 
