@@ -19,3 +19,13 @@ The schema stores projects (including their tasks/milestones), clients, and invo
 ## Verify before production
 
 Run `npm run lint`, `npm test`, and `npm run build`. With a configured test project, verify login/logout, failed login, create/update/delete persistence on refresh, second-device access, empty-cloud imports, concurrent-edit conflict handling, and inability of a second account or an unauthenticated request to read the owner's rows. The automated cloud tests use a mock transport; they do not validate a deployed Supabase project or execute the SQL migration.
+
+## Original document files
+
+Run `supabase/migrations/202610140002_document_storage.sql` in the Supabase SQL editor before enabling original-file saves. The script is safe to rerun. It creates the private `project-documents` bucket with a 3 MB file limit and owner-folder read/upload policies. No new key or Vercel environment variable is needed.
+
+On Documents, select a project, check only the fields and invoices to apply, and choose whether to save the original file and source text. Existing-project fields start unchecked. Scanned PDFs can be saved without extraction: review the file, select the existing project, and keep only the original-file attachment checked. Project Documents includes a download button; cloud downloads use a short-lived signed URL.
+
+Without cloud configuration, original files use IndexedDB in the current browser. They do not sync between devices or appear in JSON backups; clearing browser storage removes these files. Cloud original files are stored separately from workspace JSON backups. The app finishes an original-file upload before applying any record changes. A later collection-save failure is shown by the workspace saving indicator; a successful upload alone does not guarantee that its project reference was saved. Wait for workspace saving to finish before navigating away.
+
+Storage transport tests are mocked. Validate the SQL policies in your Supabase project by checking that unauthenticated users and a different account cannot download the owner's files, then test uploading and downloading from two signed-in devices.

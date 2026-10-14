@@ -31,6 +31,7 @@ import {
   INTERNAL_CLIENT,
 } from "@/lib/clientProjects";
 import ProjectStat from "@/components/projects/ProjectStat";
+import DocumentDownload from "@/components/projects/DocumentDownload";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useProjects } from "@/context/ProjectContext";
 import type {
@@ -1244,6 +1245,17 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                       <p className="mt-1 text-xs text-[#8a8e86]">
                         {document.type} · {document.size}
                       </p>
+                      <DocumentDownload document={document} />
+                      {document.sourceText && (
+                        <details className="mt-2 text-sm">
+                          <summary className="cursor-pointer">
+                            Read imported text
+                          </summary>
+                          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#f5f5f0] p-3 text-xs">
+                            {document.sourceText}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   </div>
                 ))}
