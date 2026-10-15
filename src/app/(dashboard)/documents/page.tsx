@@ -156,7 +156,7 @@ export default function DocumentsPage() {
             type="file"
             accept=".pdf,.docx,.txt,.md"
             disabled={busy}
-            className="mt-2 block w-full"
+            className="mt-2 block w-full rounded-xl border border-[#d6d8cf] bg-[#fafaf7] p-2 text-sm text-[#555951] file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-[#171918] file:bg-[#171918] file:px-4 file:py-2 file:font-medium file:text-white hover:file:bg-[#343733] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171918] disabled:opacity-50"
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
