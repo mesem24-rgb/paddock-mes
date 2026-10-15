@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import DailyPlan from "@/components/dashboard/DailyPlan";
 import { useState } from "react";
 import { useProjects } from "@/context/ProjectContext";
 import {
@@ -171,19 +172,8 @@ export default function PlannerPage() {
           })}
         </section>
       )}
-      {view === "Day" && (
-        <section className="mb-6 rounded-2xl border bg-white p-5">
-          <h2 className="mb-3 text-xl font-semibold">Scheduled for {date}</h2>
-          {scheduled.map((t) => (
-            <p key={`${t.projectId}-${t.id}`} className="border-t py-3">
-              {t.scheduledTime || "Time not set"} · {t.title} ·{" "}
-              {t.estimatedHours ?? 0}h
-            </p>
-          ))}
-          {!scheduled.length && <p>No work scheduled yet.</p>}
-        </section>
-      )}
-      <h2 className="mb-4 text-xl font-semibold">Schedule open tasks</h2>
+      {view === "Day" && <DailyPlan day={date} capacity={capacity} />}
+      <h2 className="mb-4 mt-6 text-xl font-semibold">Schedule open tasks</h2>
       <div className="space-y-3">
         {open.map((t) => (
           <article

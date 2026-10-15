@@ -1,6 +1,7 @@
 import type { BusinessClient, Project } from "@/types";
 import type { Invoice } from "@/context/InvoiceContext";
 import { projectTasks } from "@/lib/planning";
+import { invoiceReadiness } from "@/lib/invoiceReadiness";
 export interface AttentionItem {
   id: string;
   title: string;
@@ -41,19 +42,20 @@ export function needsAttention(
   const bills = invoices
     .filter(
       (i) =>
-        (i.status === "Planned" && i.sendDate <= today) ||
-        (i.status === "Sent" && i.dueDate < today),
+        invoiceReadiness(i, projects, today).ready ||
+        (i.status === "Sent" && i.dueDate && i.dueDate <= today),
     )
     .map((i) => ({
       id: `invoice:${i.id}`,
       title: i.description,
-      detail:
-        i.status === "Planned" && i.trigger
-          ? `Check condition: ${i.trigger}`
-          : "Review invoice schedule",
-      date: i.status === "Planned" ? i.sendDate : i.dueDate,
+      detail: [projects.find(p => p.id === i.projectId)?.name,
+        i.status === "Planned" ? invoiceReadiness(i, projects, today).label : "Follow up on payment",
+        i.trigger ? `Check condition: ${i.trigger}` : "",
+        Number.isFinite(i.amount) ? `$${i.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "",
+      ].filter(Boolean).join(" · "),
+      date: i.status === "Planned" ? invoiceReadiness(i, projects, today).date : i.dueDate,
       href: "/invoices",
-      kind: i.status === "Planned" ? "Invoice to send" : "Payment overdue",
+      kind: i.status === "Planned" ? "Invoice to send" : i.dueDate < today ? "Payment overdue" : "Payment due today",
     }));
   const builds = projects
     .filter((p) => p.status !== "Completed" && p.dueDate <= today)

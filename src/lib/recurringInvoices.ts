@@ -33,6 +33,7 @@ export function scheduleNextMonthlyInvoice(
   const sendDate = nextMonthlyDate(source.sendDate, billingDay);
   const next: Invoice = {
     ...source,
+    milestoneId: undefined,
     id: crypto.randomUUID(),
     sendDate,
     dueDate: shiftDate(sendDate, terms),
