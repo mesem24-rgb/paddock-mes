@@ -37,6 +37,16 @@ const docx = Buffer.from(
 const { extractDocument } = require("../src/lib/extractDocument.ts");
 const { extractSuggestions } = require("../src/lib/documentImport.ts");
 const { POST } = require("../src/app/api/documents/extract/route.ts");
+const { potentialInvoiceDuplicates } = require("../src/lib/invoiceDuplicates.ts");
+const duplicateExamples = [
+  { id: "paid", projectId: "project", amount: 1900, status: "Paid" },
+  { id: "other-project", projectId: "other", amount: 1900, status: "Planned" },
+  { id: "other-amount", projectId: "project", amount: 4500, status: "Sent" },
+];
+assert.deepEqual(potentialInvoiceDuplicates(duplicateExamples, "project", "1900.00").map(i => i.id), ["paid"]);
+assert.equal(potentialInvoiceDuplicates(duplicateExamples, "project", "").length, 0);
+assert.equal(potentialInvoiceDuplicates(duplicateExamples, "project", "bad").length, 0);
+assert.equal(potentialInvoiceDuplicates(duplicateExamples, "", "1900").length, 0);
 const tableContract = extractSuggestions("PREPARED FOR Example Manufacturing\nPROJECT INVESTMENT$15,000\n\nProject\n\nWebsite Modernization\n40% AT SIGNING\n30% AT MILESTONE\n30% BEFORE COMPLETION\n$6,000\n$4,500\n$4,500");
 assert.equal(tableContract.clientName, "Example Manufacturing");
 assert.equal(tableContract.projectName, "Website Modernization");
@@ -235,12 +245,12 @@ function pdf() {
       updateProject: (id, fields) => updates.push({ id, fields }),
     }),
   });
+  const invoiceAdds = [];
   mock("../src/context/InvoiceContext.tsx", {
     useInvoices: () => ({
+      invoices: [{ id: "paid", projectId: "project", description: "Recorded deposit", amount: 1900, status: "Paid", sendDate: "2026-10-01" }],
       isLoaded: true,
-      addInvoice() {
-        throw new Error("No invoice should be generated without a suggestion");
-      },
+      addInvoice: invoice => invoiceAdds.push(invoice),
     }),
   });
   mock("../src/lib/supabase/client.ts", { getSupabase: () => null });
@@ -313,6 +323,23 @@ function pdf() {
   assert.equal(updates[1].fields.name, undefined);
   assert.equal(updates[1].fields.clientId, undefined);
   assert.equal(updates[1].fields.dueDate, undefined);
+  assert.equal(invoiceAdds.length, 0, "unchecked suggestions must not create invoices");
+  await act(async () => renderer.root.findByType("textarea").props.onChange({ target: { value: reviewSource + "\nDeposit: $1,900" } }));
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Review extracted fields").props.onClick());
+  await act(async () => renderer.root.findByProps({ "aria-label": "Project destination" }).props.onChange({ target: { value: "project" } }));
+  const duplicateInvoiceLabel = renderer.root.findAllByType("label").find(l => l.children.some(c => typeof c === "string" && c.includes("Create this invoice")));
+  await act(async () => duplicateInvoiceLabel.findByType("input").props.onChange({ target: { checked: true } }));
+  const beforeDuplicate = updates.length;
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
+  assert.match(renderer.root.findByProps({ role: "alert" }).props.children, /matches an existing charge/);
+  assert.equal(updates.length, beforeDuplicate, "unconfirmed duplicate must not apply any changes");
+  assert.equal(invoiceAdds.length, 0);
+  await act(async () => renderer.root.findByProps({ "aria-label": "Send date" }).props.onChange({ target: { value: "2026-10-20" } }));
+  await act(async () => renderer.root.findByProps({ "aria-label": "Payment due" }).props.onChange({ target: { value: "2026-10-30" } }));
+  await act(async () => renderer.root.findByProps({ "aria-label": "Confirm separate charge 1" }).props.onChange({ target: { checked: true } }));
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Apply reviewed changes").props.onClick());
+  assert.equal(invoiceAdds.length, 1, "confirmed separate milestone charge should be allowed");
+  assert.equal(invoiceAdds[0].amount, 1900);
   const previousFetch = global.fetch;
   global.fetch = async () => Response.json({ text: reviewSource });
   await act(async () => renderer.root.findAllByType("input").find(i => i.props.type === "file").props.onChange({ target: { files: [new File(["contract"], "original.pdf")] } }));

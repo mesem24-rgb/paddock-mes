@@ -5,6 +5,7 @@ import DocumentLibrary from "@/components/projects/DocumentLibrary";
 import { useClients } from "@/context/ClientContext";
 import { useProjects } from "@/context/ProjectContext";
 import { useInvoices } from "@/context/InvoiceContext";
+import { potentialInvoiceDuplicates } from "@/lib/invoiceDuplicates";
 import { saveOriginalDocument } from "@/lib/documentStorage";
 import type { Project, ProjectDocument } from "@/types";
 import { getSupabase } from "@/lib/supabase/client";
@@ -27,7 +28,7 @@ export default function DocumentsPage() {
     createProject,
     updateProject,
   } = useProjects();
-  const { isLoaded: invoicesLoaded, addInvoice } = useInvoices();
+  const { invoices, isLoaded: invoicesLoaded, addInvoice } = useInvoices();
   const [text, setText] = useState("");
   const [source, setSource] = useState("Pasted document");
   const [review, setReview] = useState<DocumentSuggestions | null>(null);
@@ -36,6 +37,7 @@ export default function DocumentsPage() {
   type Field = "clientName" | "contactName" | "email" | "projectName" | "budget" | "startDate" | "dueDate" | "clientLink";
   const [selected, setSelected] = useState<Partial<Record<Field, boolean>>>({});
   const [includeInvoices, setIncludeInvoices] = useState<Record<number, boolean>>({});
+  const [confirmedSeparate, setConfirmedSeparate] = useState<Record<number, boolean>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saveFile, setSaveFile] = useState(true);
   const [saveText, setSaveText] = useState(true);
@@ -61,6 +63,7 @@ export default function DocumentsPage() {
     setProjectId("");
     setSelected({ projectName: true, budget: true, startDate: true, dueDate: true, clientLink: true });
     setIncludeInvoices(Object.fromEntries(suggestions.billing.map((_, i) => [i, true])));
+    setConfirmedSeparate({});
     setError("");
     setApplied("");
   }
@@ -87,6 +90,9 @@ export default function DocumentsPage() {
       setError("Check the selected client fields. Names cannot be empty and email must be valid."); return;
     }
     const billing = review.billing.filter((_, i) => includeInvoices[i]);
+    if (review.billing.some((b, i) => includeInvoices[i] && potentialInvoiceDuplicates(invoices, projectId, b.amount).length > 0 && !confirmedSeparate[i])) {
+      setError("A selected invoice matches an existing charge. Uncheck it, or confirm that it is a separate charge before applying."); return;
+    }
     if (billing.some(b => !b.description.trim() || !Number.isFinite(Number(b.amount)) || Number(b.amount) <= 0 || !b.sendDate || !b.dueDate || b.dueDate < b.sendDate)) {
       setError("Each selected invoice needs a description, positive amount, send date, and a due date on or after its send date. Uncheck invoices you do not want to create."); return;
     }
@@ -268,6 +274,7 @@ export default function DocumentsPage() {
                   value={projectId}
                   onChange={(e) => {
                     setProjectId(e.target.value);
+                    setConfirmedSeparate({});
                     setIncludeInvoices(Object.fromEntries(review.billing.map((_, i) => [i, !e.target.value])));
                     if (!e.target.value) setSelected({ projectName: true, budget: true, startDate: true, dueDate: true, clientLink: true });
                     const p = projects.find((p) => p.id === e.target.value);
@@ -371,6 +378,19 @@ export default function DocumentsPage() {
                 className="mt-3 grid gap-3 rounded-xl border p-3 sm:grid-cols-2"
               >
                 <label className="text-sm sm:col-span-2"><input type="checkbox" checked={!!includeInvoices[index]} onChange={e => setIncludeInvoices({ ...includeInvoices, [index]: e.target.checked })} /> Create this invoice</label>
+                {potentialInvoiceDuplicates(invoices, projectId, b.amount).length > 0 && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 sm:col-span-2">
+                    <p className="font-medium">Possible duplicate charge</p>
+                    <p className="mt-1">This project already has invoices for the same amount:</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      {potentialInvoiceDuplicates(invoices, projectId, b.amount).map(invoice => (
+                        <li key={invoice.id}>{invoice.description} · ${invoice.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} · {invoice.status}{invoice.sendDate ? ` · ${invoice.sendDate}` : ""}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2">Leave this invoice unchecked if the charge is already recorded. Equal milestone payments can be separate charges.</p>
+                    {includeInvoices[index] && <label className="mt-3 block"><input type="checkbox" aria-label={`Confirm separate charge ${index + 1}`} checked={!!confirmedSeparate[index]} onChange={e => setConfirmedSeparate({ ...confirmedSeparate, [index]: e.target.checked })} /> This is a separate charge; create another invoice.</label>}
+                  </div>
+                )}
                 {(
                   [
                     ["description", "Invoice description"],
@@ -391,7 +411,8 @@ export default function DocumentsPage() {
                             ? "number"
                             : "text"
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        setConfirmedSeparate({ ...confirmedSeparate, [index]: false });
                         setReview({
                           ...review,
                           billing: review.billing.map((item, i) =>
@@ -399,8 +420,8 @@ export default function DocumentsPage() {
                               ? { ...item, [key]: e.target.value }
                               : item,
                           ),
-                        })
-                      }
+                        });
+                      }}
                       className={control}
                     />
                   </label>
