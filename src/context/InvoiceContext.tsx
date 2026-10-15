@@ -3,6 +3,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { scheduleNextMonthlyInvoice } from "@/lib/recurringInvoices";
 import { useStoredCollection } from "@/lib/useStoredCollection";
 export interface Invoice {
+  milestoneId?: string;
   recurrence?: "Monthly";
   billingDay?: number;
   sourceInvoiceId?: string;

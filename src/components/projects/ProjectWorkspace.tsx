@@ -32,6 +32,7 @@ import {
 } from "@/lib/clientProjects";
 import ProjectStat from "@/components/projects/ProjectStat";
 import DocumentDownload from "@/components/projects/DocumentDownload";
+import { localDate } from "@/lib/planning";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useProjects } from "@/context/ProjectContext";
 import type {
@@ -918,9 +919,20 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                           </p>
                         </div>
 
-                        <span className="h-fit w-fit rounded-full border border-[#dedfd9] px-2.5 py-1 text-xs font-medium text-[#666a62]">
-                          {milestone.status}
-                        </span>
+                        <select
+                          aria-label={`Status for milestone ${milestone.title}`}
+                          value={milestone.status}
+                          onChange={event => {
+                            const status = event.target.value as MilestoneStatus;
+                            updateProject(project.id, { milestones: project.milestones?.map(item => item.id === milestone.id ? {
+                              ...item, status,
+                              completedDate: status === "Completed" ? item.completedDate || localDate() : undefined,
+                            } : item) });
+                          }}
+                          className="h-fit w-fit rounded-lg border border-[#dedfd9] bg-white px-2.5 py-2 text-xs font-medium text-[#666a62]"
+                        >
+                          {(["Upcoming", "In Progress", "Completed", "Delayed"] as const).map(status => <option key={status}>{status}</option>)}
+                        </select>
                       </div>
 
                       <div className="mt-3 flex items-center gap-2 text-xs text-[#8a8e86]">

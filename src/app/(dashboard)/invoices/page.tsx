@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useProjects } from "@/context/ProjectContext";
 import { useInvoices, type Invoice } from "@/context/InvoiceContext";
+import { invoiceReadiness } from "@/lib/invoiceReadiness";
 import { localDate } from "@/lib/planning";
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -14,10 +15,14 @@ export default function InvoicesPage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [filter, setFilter] = useState("All");
+  const [formProjectId, setFormProjectId] = useState("");
+  const [milestoneId, setMilestoneId] = useState("");
   if (!isLoaded || !projectsLoaded) return <p>Loading invoices…</p>;
   const today = localDate();
   const visible = invoices
-    .filter((i) => filter === "All" || i.status === filter)
+    .filter((i) => filter === "All" || i.status === filter ||
+      (filter === "Ready" && invoiceReadiness(i, projects, today).ready) ||
+      (filter === "Waiting on milestone" && i.status === "Planned" && i.milestoneId && !invoiceReadiness(i, projects, today).ready))
     .sort((a, b) => a.sendDate.localeCompare(b.sendDate));
   return (
     <div className="mx-auto max-w-6xl">
@@ -32,7 +37,7 @@ export default function InvoicesPage() {
             "Ready to send",
             String(
               invoices.filter(
-                (i) => i.status === "Planned" && i.sendDate <= today,
+                (i) => invoiceReadiness(i, projects, today).ready,
               ).length,
             ),
           ],
@@ -87,7 +92,12 @@ export default function InvoicesPage() {
             d.get("recurrence") === "Monthly"
               ? ("Monthly" as const)
               : undefined;
+          if (milestoneId && (!projects.find(p => p.id === projectId)?.milestones?.some(m => m.id === milestoneId) || recurrence)) {
+            setError("Choose a milestone from this project. Milestone billing uses one-off invoices; monthly invoices use scheduled dates.");
+            return;
+          }
           const details = {
+            milestoneId: milestoneId || undefined,
             recurrence,
             billingDay: recurrence
               ? editing?.sendDate === sendDate
@@ -104,6 +114,8 @@ export default function InvoicesPage() {
           if (editing) updateInvoice(editing.id, details);
           else addInvoice({ ...details, status: "Planned" });
           setEditing(null);
+          setFormProjectId("");
+          setMilestoneId("");
           form.reset();
           setError("");
         }}
@@ -115,7 +127,8 @@ export default function InvoicesPage() {
           Project
           <select
             name="project"
-            defaultValue={editing?.projectId ?? ""}
+            value={formProjectId}
+            onChange={event => { setFormProjectId(event.target.value); setMilestoneId(""); }}
             required
             className="mt-1 block w-full rounded-lg border p-3"
           >
@@ -150,7 +163,16 @@ export default function InvoicesPage() {
           />
         </label>
         <label>
-          Milestone / condition (optional)
+          Linked milestone (optional)
+          <select name="milestoneId" value={milestoneId} onChange={event => setMilestoneId(event.target.value)} className="mt-1 block w-full rounded-lg border p-3">
+            <option value="">Use send date</option>
+            {(projects.find(p => p.id === formProjectId)?.milestones ?? []).map(m => <option key={m.id} value={m.id}>{m.title} · {m.status}</option>)}
+            {milestoneId && !projects.find(p => p.id === formProjectId)?.milestones?.some(m => m.id === milestoneId) && <option value={milestoneId}>Milestone unavailable — choose another</option>}
+          </select>
+          <span className="mt-2 block text-xs text-[#71756e]">For one-off invoices, completing this milestone makes the invoice ready to review. Send date remains a planning target. Confirm client approval before marking its milestone complete.</span>
+        </label>
+        <label>
+          Other condition (optional)
           <input
             name="trigger"
             defaultValue={editing?.trigger ?? ""}
@@ -159,7 +181,7 @@ export default function InvoicesPage() {
           />
         </label>
         <label>
-          Send date
+          Target send date
           <input
             name="sendDate"
             type="date"
@@ -206,6 +228,8 @@ export default function InvoicesPage() {
             type="button"
             onClick={() => {
               setEditing(null);
+              setFormProjectId("");
+              setMilestoneId("");
               setError("");
             }}
             className="rounded-lg border p-3 sm:col-span-2"
@@ -221,7 +245,7 @@ export default function InvoicesPage() {
           onChange={(e) => setFilter(e.target.value)}
           className="rounded-lg border bg-white p-2"
         >
-          {["All", "Planned", "Sent", "Paid"].map((s) => (
+          {["All", "Ready", "Waiting on milestone", "Planned", "Sent", "Paid"].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
@@ -252,7 +276,8 @@ export default function InvoicesPage() {
               {i.trigger && (
                 <p className="mt-1 text-sm">Condition: {i.trigger}</p>
               )}
-              {i.status === "Planned" && i.sendDate <= today && (
+              {i.milestoneId && <p className="mt-1 text-sm">{invoiceReadiness({ ...i, status: "Planned" }, projects, today).label}</p>}
+              {invoiceReadiness(i, projects, today).ready && (
                 <p className="mt-1 text-sm font-medium">
                   Ready to review and send
                   {i.trigger ? " — check condition first" : ""}
@@ -274,6 +299,8 @@ export default function InvoicesPage() {
               className="rounded-lg border px-3 py-2"
               onClick={() => {
                 setEditing(i);
+                setFormProjectId(i.projectId);
+                setMilestoneId(i.milestoneId ?? "");
                 setError("");
                 document
                   .getElementById("invoice-form")

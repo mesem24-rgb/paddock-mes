@@ -164,7 +164,7 @@ const reminders = needsAttention(
   ],
   "2026-10-14",
 );
-assert.equal(reminders.length, 4);
+assert.equal(reminders.length, 5);
 assert.equal(reminders[0].id, "client:active");
 assert.ok(reminders.some((r) => r.id === "project:build"));
 assert.ok(reminders.some((r) => r.id === "task:build:due"));
@@ -254,3 +254,98 @@ assert.equal(scheduleNextMonthlyInvoice(oneoff, monthly.id), oneoff);
 console.log(
   "Passed: monthly billing, leap/year boundaries, payment terms, month-end anchors, source links and duplicate prevention.",
 );
+
+const { invoiceReadiness } = require("../src/lib/invoiceReadiness.ts");
+const { dailyPlan } = require("../src/lib/dailyPlan.ts");
+const day = "2026-10-15";
+const approvalProject = {
+  id: "p", name: "Client build", clientName: "Example Client", status: "In Progress", dueDate: "2026-11-15",
+  milestones: [{ id: "approval", title: "Client approval", status: "In Progress", dueDate: "2026-10-14" }],
+  tasks: [
+    { ...task("scheduled", day, "09:00", 2), dueDate: "2026-10-14" },
+    task("overlap", day, "10:00", 1),
+    { ...task("anytime", day, "", 0), dueDate: "2026-10-20" },
+    { id: "unscheduled", title: "Unscheduled deadline", status: "To Do", dueDate: "2026-10-14" },
+    task("done", day, "08:00", 8, "Completed"),
+    task("tomorrow", "2026-10-16", "09:00", 3),
+  ],
+};
+const linkedInvoice = { id: "linked", projectId: "p", milestoneId: "approval", description: "Approval payment", amount: 4500, status: "Planned", sendDate: "2026-10-10", dueDate: "2026-10-25", trigger: "Client approval confirmed" };
+assert.equal(invoiceReadiness(linkedInvoice, [approvalProject], day).ready, false, "an old send date must not bypass a pending milestone");
+assert.equal(invoiceReadiness({ ...linkedInvoice, milestoneId: undefined }, [approvalProject], day).ready, true, "legacy scheduled invoices still work");
+assert.equal(invoiceReadiness(linkedInvoice, [], day).ready, false, "missing project must not release a linked invoice");
+assert.equal(invoiceReadiness({ ...linkedInvoice, milestoneId: "missing" }, [approvalProject], day).ready, false);
+const completedApproval = { ...approvalProject, milestones: [{ ...approvalProject.milestones[0], status: "Completed", completedDate: day }] };
+const futureLinked = { ...linkedInvoice, sendDate: "2026-11-01" };
+assert.equal(invoiceReadiness(futureLinked, [completedApproval], day).ready, true, "completion releases a milestone invoice before its planning date");
+assert.equal(invoiceReadiness(futureLinked, [approvalProject], day).ready, false, "reopening a milestone restores waiting for planned invoices");
+for (const status of ["Sent", "Paid"]) assert.equal(invoiceReadiness({ ...linkedInvoice, status }, [completedApproval], day).ready, false);
+assert.equal(invoiceReadiness({ ...linkedInvoice, milestoneId: undefined, sendDate: "" }, [completedApproval], day).ready, false);
+const billing = [futureLinked, { ...linkedInvoice, id: "paid-linked", status: "Paid" }, { ...linkedInvoice, id: "due-payment", milestoneId: undefined, status: "Sent", dueDate: day }];
+const clientsForDay = [
+  { id: "client", companyName: "Example Client", status: "Active", followUpDate: "2026-10-14", followUpAction: "Request content" },
+  { id: "archived", status: "Archived", followUpDate: day },
+];
+const plan = dailyPlan([completedApproval], clientsForDay, billing, day);
+assert.deepEqual(plan.scheduled.map(t => t.id), ["scheduled", "overlap", "anytime"]);
+assert.equal(plan.hours, 3);
+assert.equal(plan.unestimated, 1);
+assert.ok(plan.conflicts.has("p:scheduled"));
+assert.ok(!plan.actions.some(item => item.id === "task:p:scheduled"), "scheduled overdue tasks must not appear twice");
+assert.ok(plan.actions.some(item => item.id === "task:p:unscheduled"));
+assert.ok(plan.actions.some(item => item.id === "client:client"));
+assert.ok(plan.actions.some(item => item.id === "invoice:linked"));
+assert.ok(plan.actions.some(item => item.id === "invoice:due-payment" && item.kind === "Payment due today"));
+assert.ok(!plan.actions.some(item => item.id === "invoice:paid-linked" || item.id === "client:archived"));
+assert.ok(!dailyPlan([approvalProject], clientsForDay, billing, day).actions.some(item => item.id === "invoice:linked"));
+assert.equal(scheduleNextMonthlyInvoice([{ ...monthly, milestoneId: "approval" }], monthly.id)[1].milestoneId, undefined, "recurrence must not reuse a completed milestone");
+console.log("Passed: milestone readiness, reopening, missing links, legacy dates, daily-plan deduplication, capacity, conflicts, and payment actions.");
+
+(async () => {
+  const React = require("react");
+  const { create, act } = require("react-test-renderer");
+  const mock = (filename, exports) => {
+    const resolved = require.resolve(filename);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+  };
+  let activeProject = approvalProject;
+  let savedInvoice;
+  const taskUpdates = [], completedFollowups = [];
+  mock("../src/context/ProjectContext.tsx", { useProjects: () => ({ projects: [activeProject], isLoaded: true, updateTask: (...args) => taskUpdates.push(args) }) });
+  mock("../src/context/ClientContext.tsx", { useClients: () => ({ clients: clientsForDay, isLoaded: true, completeFollowUp: id => completedFollowups.push(id) }) });
+  mock("../src/context/InvoiceContext.tsx", { useInvoices: () => ({ invoices: [], isLoaded: true, addInvoice: invoice => { savedInvoice = invoice; }, updateInvoice() {}, scheduleNextInvoice() {} }) });
+  mock("next/link", { __esModule: true, default: props => React.createElement("a", props, props.children) });
+  const InvoicePage = require("../src/app/(dashboard)/invoices/page.tsx").default;
+  let renderer;
+  await act(async () => { renderer = create(React.createElement(InvoicePage)); });
+  await act(async () => renderer.root.findByProps({ name: "project" }).props.onChange({ target: { value: "p" } }));
+  await act(async () => renderer.root.findByProps({ name: "milestoneId" }).props.onChange({ target: { value: "approval" } }));
+  const RealFormData = global.FormData;
+  const formValues = { project: "p", description: "Approval payment", amount: "4500", sendDate: day, dueDate: "2026-10-25", trigger: "Client approval", recurrence: "One-off" };
+  global.FormData = class { get(key) { return formValues[key] ?? ""; } };
+  try {
+    await act(async () => renderer.root.findByType("form").props.onSubmit({ preventDefault() {}, currentTarget: { reset() {} } }));
+    assert.equal(savedInvoice.milestoneId, "approval", "invoice form must persist the selected milestone");
+    assert.equal(savedInvoice.status, "Planned", "linking must not send or pay an invoice");
+    await act(async () => renderer.root.findByProps({ name: "project" }).props.onChange({ target: { value: "p" } }));
+    await act(async () => renderer.root.findByProps({ name: "milestoneId" }).props.onChange({ target: { value: "approval" } }));
+    formValues.recurrence = "Monthly";
+    savedInvoice = undefined;
+    await act(async () => renderer.root.findByType("form").props.onSubmit({ preventDefault() {}, currentTarget: { reset() {} } }));
+    assert.equal(savedInvoice, undefined, "monthly invoices must not retain a one-off milestone trigger");
+    assert.match(renderer.root.findByProps({ role: "alert" }).props.children, /one-off invoices/);
+    await act(async () => renderer.root.findByProps({ name: "project" }).props.onChange({ target: { value: "p" } }));
+    assert.equal(renderer.root.findByProps({ name: "milestoneId" }).props.value, "", "project changes clear milestone selection");
+  } finally { global.FormData = RealFormData; }
+  await act(async () => renderer.unmount());
+  const DailyPlan = require("../src/components/dashboard/DailyPlan.tsx").default;
+  activeProject = completedApproval;
+  await act(async () => { renderer = create(React.createElement(DailyPlan, { day, capacity: 2 })); });
+  assert.match(JSON.stringify(renderer.toJSON()), /Over capacity/);
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Mark task complete").props.onClick());
+  assert.deepEqual(taskUpdates[0], ["p", "scheduled", { status: "Completed" }]);
+  await act(async () => renderer.root.findAllByType("button").find(b => b.props.children === "Mark follow-up done").props.onClick());
+  assert.deepEqual(completedFollowups, ["client"]);
+  await act(async () => renderer.unmount());
+  console.log("Passed: invoice milestone form persistence, monthly exclusion, project-switch reset, daily capacity, task completion, and follow-up completion.");
+})().catch(error => { console.error(error); process.exitCode = 1; });
