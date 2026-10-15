@@ -6,6 +6,7 @@ import { useClients } from "@/context/ClientContext";
 import { useInvoices } from "@/context/InvoiceContext";
 import { dailyPlan } from "@/lib/dailyPlan";
 import { localDate } from "@/lib/planning";
+import QuickTask from "@/components/dashboard/QuickTask";
 
 export default function DailyPlan({ day, capacity }: { day: string; capacity?: number }) {
   const { projects, isLoaded, updateTask } = useProjects();
@@ -25,6 +26,7 @@ export default function DailyPlan({ day, capacity }: { day: string; capacity?: n
       {capacity === undefined && <label className="text-sm">Available work hours <input aria-label="Today's available work hours" type="number" min="0" max="24" step="0.5" value={availableHours} onChange={event => setAvailableHours(Math.min(24, Math.max(0, Number(event.target.value) || 0)))} className="ml-2 w-20 rounded-lg border bg-white p-2" /></label>}
       <p className="w-full text-xs text-[#71756e]">{plan.actions.length} other actions need review. Leave room for calls, follow-ups, and billing.{plan.unestimated > 0 ? ` ${plan.unestimated} scheduled tasks still need time estimates.` : ""} Capacity is for this view.</p>
     </div>
+    <QuickTask key={day} day={day} plannedHours={plan.hours} capacity={limit} />
     <div className="mt-5 grid gap-6 lg:grid-cols-2">
       <div>
         <h3 className="font-semibold">Scheduled work · {plan.scheduled.length}</h3>
