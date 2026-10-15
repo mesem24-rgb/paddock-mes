@@ -173,7 +173,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     (projectId: string, taskInput: Omit<ProjectTask, "id">) => {
       const task: ProjectTask = {
         ...taskInput,
-        id: `task-${Date.now()}`,
+        id: `task-${crypto.randomUUID()}`,
       };
 
       setProjects((currentProjects) =>
