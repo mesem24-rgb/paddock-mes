@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjects } from "@/context/ProjectContext";
 import { useInvoices, type Invoice } from "@/context/InvoiceContext";
 import { invoiceReadiness } from "@/lib/invoiceReadiness";
@@ -17,6 +17,11 @@ export default function InvoicesPage() {
   const [filter, setFilter] = useState("All");
   const [formProjectId, setFormProjectId] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
+  useEffect(() => {
+    if (!isLoaded || !projectsLoaded || typeof window === "undefined") return;
+    const id = window.location?.hash.slice(1);
+    if (id?.startsWith("invoice-")) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [isLoaded, projectsLoaded]);
   if (!isLoaded || !projectsLoaded) return <p>Loading invoices…</p>;
   const today = localDate();
   const visible = invoices
@@ -254,7 +259,8 @@ export default function InvoicesPage() {
         {visible.map((i) => (
           <article
             key={i.id}
-            className="flex flex-wrap items-center gap-4 rounded-xl border bg-white p-5"
+            id={`invoice-${i.id}`}
+            className="flex scroll-mt-6 flex-wrap items-center gap-4 rounded-xl border bg-white p-5 target:border-[#171918] target:ring-2 target:ring-[#171918]"
           >
             <div className="mr-auto">
               <h2 className="font-semibold">

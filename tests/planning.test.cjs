@@ -255,6 +255,37 @@ console.log(
   "Passed: monthly billing, leap/year boundaries, payment terms, month-end anchors, source links and duplicate prevention.",
 );
 
+const { projectBilling } = require("../src/lib/projectBilling.ts");
+const billingProject = { id: "billing", budget: 15000, amountPaid: 6000 };
+const invoiceForBilling = (id, amount, status, recurrence, projectId = "billing") => ({ id, amount, status, recurrence, projectId, sendDate: "2026-10-15" });
+const billingSummary = projectBilling(billingProject, [
+  invoiceForBilling("deposit", 6000, "Paid"),
+  invoiceForBilling("milestone", 4500, "Sent"),
+  invoiceForBilling("final", 4500, "Planned"),
+  invoiceForBilling("retainer-paid", 500, "Paid", "Monthly"),
+  invoiceForBilling("retainer-sent", 500, "Sent", "Monthly"),
+  invoiceForBilling("retainer-planned", 500, "Planned", "Monthly"),
+  invoiceForBilling("another-client", 9999, "Paid", undefined, "other"),
+]);
+assert.equal(billingSummary.paid, 6000);
+assert.equal(billingSummary.outstanding, 4500);
+assert.equal(billingSummary.planned, 4500);
+assert.equal(billingSummary.unbilled, 4500, "planned invoices remain unbilled until marked sent or paid");
+assert.equal(billingSummary.unscheduled, 0);
+assert.equal(billingSummary.overBudget, 0, "retainers must not inflate project-budget coverage");
+assert.equal(billingSummary.paymentMismatch, false);
+assert.deepEqual(billingSummary.monthly, { count: 3, paid: 500, outstanding: 500, planned: 500 });
+assert.equal(billingSummary.records.length, 6, "other-project invoices must be excluded");
+const emptyBilling = projectBilling(billingProject, []);
+assert.equal(emptyBilling.unbilled, 15000);
+assert.equal(emptyBilling.unscheduled, 15000);
+assert.equal(emptyBilling.paid, 0, "manual payments must not be counted as paid invoices");
+assert.equal(projectBilling({ ...billingProject, amountPaid: 8000 }, [invoiceForBilling("paid", 6000, "Paid")]).paymentMismatch, true);
+assert.equal(projectBilling({ ...billingProject, budget: 100 }, [invoiceForBilling("paid", 120, "Paid")]).overBudget, 20);
+assert.equal(projectBilling({ ...billingProject, budget: 100 }, [invoiceForBilling("paid", 120, "Paid")]).unbilled, 0);
+assert.equal(projectBilling({ ...billingProject, budget: 0.3 }, [invoiceForBilling("a", 0.1, "Sent"), invoiceForBilling("b", 0.2, "Planned")]).unscheduled, 0, "balances must remain exact in cents");
+console.log("Passed: project billing totals, unbilled/unscheduled budget, monthly separation, manual-payment reconciliation, over-budget invoices, and cents rounding.");
+
 const { invoiceReadiness } = require("../src/lib/invoiceReadiness.ts");
 const { dailyPlan } = require("../src/lib/dailyPlan.ts");
 const day = "2026-10-15";
