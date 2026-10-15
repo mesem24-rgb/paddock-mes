@@ -32,6 +32,7 @@ import {
 } from "@/lib/clientProjects";
 import ProjectStat from "@/components/projects/ProjectStat";
 import DocumentDownload from "@/components/projects/DocumentDownload";
+import ProjectBilling from "@/components/projects/ProjectBilling";
 import { localDate } from "@/lib/planning";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useProjects } from "@/context/ProjectContext";
@@ -757,14 +758,14 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           label="Project budget"
           value={formatCurrency(project.budget)}
           icon={CircleDollarSign}
-          supportingText={`${formatCurrency(project.amountPaid)} received`}
+          supportingText={`${formatCurrency(project.amountPaid)} manually recorded as received`}
         />
 
         <ProjectStat
           label="Outstanding"
           value={formatCurrency(outstandingAmount)}
           icon={CircleDollarSign}
-          supportingText="Remaining project value"
+          supportingText="Budget less manually recorded payments"
         />
 
         <ProjectStat
@@ -782,6 +783,7 @@ export default function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         />
       </section>
 
+      <ProjectBilling project={project} />
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
         <div className="space-y-6">
           <article className="rounded-2xl border border-[#dedfd9] bg-white">
